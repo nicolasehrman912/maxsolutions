@@ -14,16 +14,19 @@ import { Button } from "@/components/ui/button"
 
 export function PurchaseStepsModal() {
   const [isOpen, setIsOpen] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
   
-  // Show modal on component mount EVERY time the page loads
   useEffect(() => {
-    // Short delay to ensure the modal appears after page load
+    setIsMounted(true)
+    
     const timer = setTimeout(() => {
       setIsOpen(true)
     }, 1000)
     
     return () => clearTimeout(timer)
   }, [])
+  
+  if (!isMounted) return null;
   
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>

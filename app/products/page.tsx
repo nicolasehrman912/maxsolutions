@@ -1,5 +1,5 @@
 import { ProductGrid } from "@/components/product-grid"
-import { getUnifiedProducts, getUnifiedCategories, createCompositeId } from "@/lib/api/unified"
+import { getUnifiedProducts, getUnifiedCategories, createCompositeId, UnifiedCategory } from "@/lib/api/unified"
 import { Suspense } from "react"
 import { Filter, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -21,7 +21,7 @@ export const revalidate = 3600 // Revalidate this page every hour
 type SearchParams = {
   page?: string
   limit?: string
-  category?: string
+  category?: string | string[]
   stock?: string
   search?: string
   source?: string
@@ -42,7 +42,12 @@ export default async function ProductsPage({
   
   // Get category filter
   const categoryParam = paramsData.category;
-  const categories = categoryParam ? [categoryParam] : undefined;
+  // Handle both single category string and array of categories
+  const categories = categoryParam 
+    ? Array.isArray(categoryParam) 
+      ? categoryParam // If already an array
+      : [categoryParam] // If single string, convert to array
+    : undefined;
   
   // Always filter for products with stock, unless explicitly looking for no-stock products
   const stockParam = paramsData.stock;
@@ -58,6 +63,9 @@ export default async function ProductsPage({
   try {
     console.log('Starting to fetch products and categories');
     
+    // Fetch categories first to poder pasarlas a los componentes
+    const allCategories = await getUnifiedCategories();
+    
     // Fetch products and categories in parallel with loading states
     return (
       <div className="container mx-auto px-4 py-8">
@@ -71,7 +79,7 @@ export default async function ProductsPage({
               </div>
             </div>
             
-            <form>
+            <form action="/products" method="get">
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Input
@@ -95,6 +103,11 @@ export default async function ProductsPage({
                   <CategoriesSection categoryParam={categoryParam} />
                 </Suspense>
                 
+                {/* Mantener otros parámetros existentes que no estén controlados por inputs visibles */}
+                {page > 1 && <input type="hidden" name="page" value={page} />}
+                {limit !== 16 && <input type="hidden" name="limit" value={limit} />}
+                {stockParam === '0' && <input type="hidden" name="stock" value="0" />}
+                
                 <Button type="submit" className="w-full">
                   Aplicar Filtros
                 </Button>
@@ -114,8 +127,10 @@ export default async function ProductsPage({
                 page={page} 
                 limit={limit} 
                 categories={categories} 
+                categoryParam={categoryParam}
                 stock={stock} 
                 search={search}
+                allCategories={allCategories}
               />
             </Suspense>
           </div>
@@ -143,58 +158,133 @@ export default async function ProductsPage({
 }
 
 // Componente separado para categorías - carga independiente
-async function CategoriesSection({ categoryParam }: { categoryParam?: string }) {
-  const allCategories = await getUnifiedCategories();
-  
-  // Ordenar alfabéticamente todas las categorías unificadas
-  const allCategoriesSorted = [...allCategories].sort((a, b) => {
-    const nameA = a.source === 'zecat' 
-      ? ((a as any).title || (a as any).description || 'Categoría') 
-      : ((a as any).name || 'Categoría');
-    const nameB = b.source === 'zecat' 
-      ? ((b as any).title || (b as any).description || 'Categoría') 
-      : ((b as any).name || 'Categoría');
-    return nameA.localeCompare(nameB);
-  });
-  
-  if (allCategoriesSorted.length === 0) {
-    return null;
-  }
-  
-  return (
-    <Accordion type="single" collapsible className="w-full">
-      <AccordionItem value="all-categories">
-        <AccordionTrigger className="text-sm">Categorías</AccordionTrigger>
-        <AccordionContent>
-          <div className="space-y-4 pt-1">
-            {allCategoriesSorted.map((category) => {
-              const categoryId = category.id.toString();
-              const categoryName = category.source === 'zecat' 
-                ? ((category as any).title || (category as any).description || 'Categoría') 
-                : ((category as any).name || 'Categoría');
-              
-              return (
-                <div key={`${category.source}-${categoryId}`} className="flex items-center space-x-2">
-                  <Checkbox 
-                    id={`category-${category.source}-${categoryId}`}
-                    name="category"
-                    value={categoryId}
-                    defaultChecked={categoryParam === categoryId}
-                  />
-                  <label
-                    htmlFor={`category-${category.source}-${categoryId}`}
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    {categoryName}
-                  </label>
+async function CategoriesSection({ categoryParam }: { categoryParam?: string | string[] }) {
+  try {
+    // Intento obtener todas las categorías, pero no detengo la aplicación si falla
+    const allCategories = await getUnifiedCategories();
+    
+    // Obtener todos los productos para determinar qué categorías tienen productos
+    const allProductsResponse = await getUnifiedProducts({
+      limit: 1000, // Obtener un número razonable de productos para analizar categorías
+      source: undefined
+    });
+    
+    // Extraer un conjunto de IDs de categorías que tienen productos
+    const categoriesWithProducts = new Set<string>();
+    
+    allProductsResponse.products.forEach(product => {
+      if (product.source === 'zecat' && product.families) {
+        // Para productos Zecat, agregar cada familia (categoría)
+        product.families.forEach(family => {
+          categoriesWithProducts.add(family.id.toString());
+        });
+      } else if (product.source === 'cdo' && product.categories) {
+        // Para productos CDO, agregar cada categoría
+        product.categories.forEach(category => {
+          categoriesWithProducts.add(category.id.toString());
+        });
+      }
+    });
+    
+    // Filtrar categorías que tienen productos
+    const categoriesWithProductsSorted = allCategories
+      .filter(category => categoriesWithProducts.has(category.id.toString()))
+      .sort((a, b) => {
+        const nameA = a.source === 'zecat' 
+          ? ((a as any).title || (a as any).description || 'Categoría') 
+          : ((a as any).name || 'Categoría');
+        const nameB = b.source === 'zecat' 
+          ? ((b as any).title || (b as any).description || 'Categoría') 
+          : ((b as any).name || 'Categoría');
+        return nameA.localeCompare(nameB);
+      });
+    
+    if (categoriesWithProductsSorted.length === 0) {
+      console.log('No hay categorías con productos disponibles');
+      return null;
+    }
+    
+    // Convertir categoryParam a array para manejar casos múltiples
+    const selectedCategories = Array.isArray(categoryParam) 
+      ? categoryParam 
+      : categoryParam ? [categoryParam] : [];
+    
+    return (
+      <Accordion type="single" collapsible className="w-full" defaultValue={selectedCategories.length > 0 ? "all-categories" : undefined}>
+        <AccordionItem value="all-categories">
+          <AccordionTrigger className="text-sm">
+            Categorías
+            {selectedCategories.length > 0 && (
+              <span className="ml-2 text-xs rounded-full bg-primary text-primary-foreground px-2 py-1">
+                {selectedCategories.length}
+              </span>
+            )}
+          </AccordionTrigger>
+          <AccordionContent>
+            {selectedCategories.length > 0 && (
+              <div className="mb-3 pb-3 border-b text-xs text-muted-foreground">
+                <p className="font-bold mb-1">Categorías seleccionadas:</p>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {selectedCategories.map(catId => {
+                    // Encontrar la categoría correspondiente para mostrar su nombre
+                    const category = allCategories.find(c => c.id.toString() === catId);
+                    const categoryName = category 
+                      ? (category.source === 'zecat' 
+                        ? ((category as any).title || (category as any).description || 'Categoría') 
+                        : ((category as any).name || 'Categoría'))
+                      : catId;
+                    
+                    return (
+                      <span key={catId} className="px-2 py-1 bg-muted rounded-full text-xs">
+                        {categoryName}
+                      </span>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
-        </AccordionContent>
-      </AccordionItem>
-    </Accordion>
-  );
+              </div>
+            )}
+            <div className="space-y-4 pt-1">
+              {categoriesWithProductsSorted.map((category) => {
+                const categoryId = category.id.toString();
+                const categoryName = category.source === 'zecat' 
+                  ? ((category as any).title || (category as any).description || 'Categoría') 
+                  : ((category as any).name || 'Categoría');
+                
+                return (
+                  <div key={`${category.source}-${categoryId}`} className="flex items-center space-x-2">
+                    <Checkbox 
+                      id={`category-${category.source}-${categoryId}`}
+                      name="category"
+                      value={categoryId}
+                      defaultChecked={selectedCategories.includes(categoryId)}
+                    />
+                    <label
+                      htmlFor={`category-${category.source}-${categoryId}`}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      {categoryName}
+                    </label>
+                  </div>
+                );
+              })}
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+    );
+  } catch (error) {
+    console.error('Error al cargar las categorías:', error);
+    
+    // Fallback UI para cuando hay un error con las categorías
+    return (
+      <div className="text-sm text-muted-foreground rounded-md p-3 bg-muted">
+        <p>No se pudieron cargar las categorías en este momento.</p>
+        <a href="/products" className="text-primary hover:underline mt-2 inline-block">
+          Recargar filtros
+        </a>
+      </div>
+    );
+  }
 }
 
 // Componente separado para productos con paginación - carga independiente
@@ -202,14 +292,18 @@ async function ProductListingWithPagination({
   page, 
   limit,
   categories,
+  categoryParam,
   stock,
-  search
+  search,
+  allCategories
 }: { 
   page: number, 
   limit: number,
   categories?: string[],
+  categoryParam?: string | string[],
   stock?: number,
-  search?: string
+  search?: string,
+  allCategories: UnifiedCategory[]
 }) {
   const productsResponse = await getUnifiedProducts({
     page,
@@ -263,6 +357,25 @@ async function ProductListingWithPagination({
   const totalPages = productsResponse.total_pages;
   const totalProducts = productsResponse.count;
   
+  // Función auxiliar para construir la URL de paginación con múltiples categorías
+  const buildPaginationUrl = (pageNum: number) => {
+    let url = `/products?page=${pageNum}`;
+    
+    // Agregar categorías seleccionadas
+    if (Array.isArray(categoryParam)) {
+      categoryParam.forEach(cat => {
+        url += `&category=${cat}`;
+      });
+    } else if (categoryParam) {
+      url += `&category=${categoryParam}`;
+    }
+    
+    // Siempre agregar término de búsqueda, incluso si está vacío
+    url += `&search=${encodeURIComponent(search || '')}`;
+    
+    return url;
+  };
+  
   return (
     <>
       <div className="flex items-center justify-between mb-6">
@@ -271,11 +384,68 @@ async function ProductListingWithPagination({
         </p>
       </div>
       
+      {/* Mostrar indicadores de filtros activos */}
+      {(categories && categories.length > 0 || search) && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <span className="text-sm">Filtros activos:</span>
+          
+          {search && (
+            <div className="flex items-center gap-1 bg-muted rounded-full px-3 py-1 text-xs">
+              <span>Búsqueda: {search}</span>
+              <a href={`/products?${categories ? categories.map(cat => `category=${cat}`).join('&') : ''}`}>
+                <Button variant="ghost" size="icon" className="h-4 w-4">
+                  <span>×</span>
+                </Button>
+              </a>
+            </div>
+          )}
+          
+          {categories && categories.map(catId => {
+            // Encontrar la categoría correspondiente para mostrar su nombre
+            const category = allCategories.find(c => c.id.toString() === catId);
+            const categoryName = category 
+              ? (category.source === 'zecat' 
+                ? ((category as any).title || (category as any).description || 'Categoría') 
+                : ((category as any).name || 'Categoría'))
+              : catId;
+            
+            // Crear URL sin esta categoría
+            const otherCategories = categories.filter(id => id !== catId);
+            const newUrl = `/products?${otherCategories.map(cat => `category=${cat}`).join('&')}${search ? `&search=${encodeURIComponent(search)}` : ''}`;
+            
+            return (
+              <div key={catId} className="flex items-center gap-1 bg-muted rounded-full px-3 py-1 text-xs">
+                <span>{categoryName}</span>
+                <a href={newUrl}>
+                  <Button variant="ghost" size="icon" className="h-4 w-4">
+                    <span>×</span>
+                  </Button>
+                </a>
+              </div>
+            );
+          })}
+          
+          <a href="/products?search=">
+            <Button variant="outline" size="sm" className="ml-2 text-xs">
+              Limpiar todos
+            </Button>
+          </a>
+        </div>
+      )}
+      
       {products.length > 0 ? (
         <ProductGrid products={products} />
       ) : (
         <div className="text-center py-12">
-          <p className="text-muted-foreground">No se encontraron productos que coincidan con los criterios.</p>
+          <p className="text-muted-foreground mb-2">No se encontraron productos que coincidan con los criterios.</p>
+          {categoryParam && (
+            <p className="text-muted-foreground mb-6">
+              Prueba seleccionando diferentes categorías o quitando algunos filtros.
+            </p>
+          )}
+          <a href="/products?search=">
+            <Button variant="outline">Ver todos los productos</Button>
+          </a>
         </div>
       )}
       
@@ -283,7 +453,7 @@ async function ProductListingWithPagination({
       {totalPages > 1 && (
         <div className="flex justify-center gap-2 mt-8">
           {page > 1 && (
-            <a href={`/products?page=${page - 1}${categoryParam ? `&category=${categoryParam}` : ''}${search ? `&search=${encodeURIComponent(search || '')}` : ''}`}>
+            <a href={buildPaginationUrl(page - 1)}>
               <Button variant="outline">Anterior</Button>
             </a>
           )}
@@ -293,7 +463,7 @@ async function ProductListingWithPagination({
           </span>
           
           {page < totalPages && (
-            <a href={`/products?page=${page + 1}${categoryParam ? `&category=${categoryParam}` : ''}${search ? `&search=${encodeURIComponent(search || '')}` : ''}`}>
+            <a href={buildPaginationUrl(page + 1)}>
               <Button variant="outline">Siguiente</Button>
             </a>
           )}

@@ -64,6 +64,8 @@ function mapUnifiedToZecatFilters(unified: UnifiedFilters): ProductFilters {
  * Convert unified filters to CDO-specific filters
  */
 function mapUnifiedToCDOFilters(unified: UnifiedFilters): CDOProductFilters {
+  // Nota: La API de CDO solo admite una categoría a la vez,
+  // así que tomamos la primera si hay múltiples
   return {
     page_number: unified.page,
     page_size: unified.limit,
@@ -82,6 +84,37 @@ export async function getUnifiedProducts(filters: UnifiedFilters = {}): Promise<
       const zecatFilters = mapUnifiedToZecatFilters(filters);
       const response = await getZecatProducts(zecatFilters);
       
+      // Si se está filtrando por categorías, verificar que los productos realmente
+      // pertenezcan a las categorías seleccionadas
+      if (filters.categories && filters.categories.length > 0) {
+        const categoryIds = filters.categories.map(cat => String(cat));
+        
+        // Filtrar productos por categoría
+        const filteredProducts = response.generic_products.filter(product => 
+          product.families && product.families.some(family => 
+            categoryIds.includes(String(family.id))
+          )
+        );
+        
+        // Si después de filtrar no hay productos, devolver lista vacía
+        if (filteredProducts.length === 0) {
+          return {
+            total_pages: 1,
+            count: 0,
+            products: [],
+            source: 'zecat'
+          };
+        }
+        
+        // Devolver solo los productos filtrados
+        return {
+          total_pages: Math.ceil(filteredProducts.length / (filters.limit || 20)),
+          count: filteredProducts.length,
+          products: filteredProducts.map(product => ({ ...product, source: 'zecat' as const })),
+          source: 'zecat'
+        };
+      }
+      
       return {
         total_pages: response.total_pages,
         count: response.count,
@@ -93,6 +126,37 @@ export async function getUnifiedProducts(filters: UnifiedFilters = {}): Promise<
     if (filters.source === 'cdo') {
       const cdoFilters = mapUnifiedToCDOFilters(filters);
       const response = await getCDOProducts(cdoFilters);
+      
+      // Si se está filtrando por múltiples categorías, necesitamos filtrar manualmente
+      // ya que la API de CDO solo puede filtrar por una categoría
+      if (filters.categories && filters.categories.length > 1) {
+        const categoryIds = filters.categories.map(cat => String(cat));
+        
+        // Filtrar productos que coincidan con alguna de las categorías seleccionadas
+        const filteredProducts = response.products.filter(product => 
+          product.categories && product.categories.some(category => 
+            categoryIds.includes(String(category.id))
+          )
+        );
+        
+        // Si después de filtrar no hay productos, devolver lista vacía
+        if (filteredProducts.length === 0) {
+          return {
+            total_pages: 1,
+            count: 0,
+            products: [],
+            source: 'cdo'
+          };
+        }
+        
+        // Devolver solo los productos filtrados
+        return {
+          total_pages: Math.ceil(filteredProducts.length / (filters.limit || 20)),
+          count: filteredProducts.length,
+          products: filteredProducts,
+          source: 'cdo'
+        };
+      }
       
       return {
         total_pages: response.total_pages || 1,
@@ -124,8 +188,45 @@ export async function getUnifiedProducts(filters: UnifiedFilters = {}): Promise<
         ? cdoResult.value.products
         : [];
       
-      // Combine and paginate results
-      const allProducts = [...zecatProducts, ...cdoProducts];
+      // Combinar productos, pero aplicar filtros de categoría de manera más estricta
+      let allProducts = [...zecatProducts, ...cdoProducts];
+      
+      // Si hay filtros de categoría, debemos asegurarnos de que solo se muestren productos
+      // que coincidan exactamente con las categorías seleccionadas
+      if (filters.categories && filters.categories.length > 0) {
+        const categoryIds = filters.categories.map(cat => String(cat));
+        
+        // Filtrar productos de Zecat por categoría (families)
+        const filteredZecatProducts = zecatProducts.filter(product => {
+          // Comprobar si alguna de las familias del producto coincide con alguna de las categorías seleccionadas
+          return product.families && product.families.some(family => 
+            categoryIds.includes(String(family.id))
+          );
+        });
+        
+        // Para CDO, si usamos unified y hay múltiples categorías, necesitamos filtrar manualmente
+        // ya que la API de CDO solo puede filtrar por una categoría
+        const filteredCdoProducts = cdoProducts.filter(product => {
+          // Para CDO debemos verificar que alguna categoría del producto coincida con las seleccionadas
+          return product.categories && product.categories.some(category =>
+            categoryIds.includes(String(category.id))
+          );
+        });
+        
+        // Usar solo los productos filtrados
+        allProducts = [...filteredZecatProducts, ...filteredCdoProducts];
+        
+        // Si después de aplicar el filtro no hay productos, devolver lista vacía
+        if (allProducts.length === 0) {
+          return {
+            total_pages: 1,
+            count: 0,
+            products: [],
+            source: 'unified'
+          };
+        }
+      }
+      
       const pageSize = filters.limit || 20;
       const currentPage = filters.page || 1;
       
@@ -233,6 +334,8 @@ export async function getUnifiedProductById(compositeId: string): Promise<Unifie
  */
 export async function getUnifiedCategories(): Promise<UnifiedCategory[]> {
   try {
+    console.log('Fetching categories from Zecat and CDO APIs...');
+    
     // Using Promise.allSettled to handle potential failures in either API
     const [zecatResult, cdoResult] = await Promise.allSettled([
       getZecatFamilies(),
@@ -247,6 +350,13 @@ export async function getUnifiedCategories(): Promise<UnifiedCategory[]> {
         }))
       : [];
     
+    // Log status of Zecat API
+    if (zecatResult.status === 'fulfilled') {
+      console.log(`Successfully fetched ${zecatCategories.length} categories from Zecat`);
+    } else {
+      console.error('Failed to fetch Zecat categories:', zecatResult.reason);
+    }
+    
     // Process CDO categories (if successful)  
     const cdoCategoriesWithSource = cdoResult.status === 'fulfilled'
       ? cdoResult.value.map(category => ({
@@ -255,7 +365,17 @@ export async function getUnifiedCategories(): Promise<UnifiedCategory[]> {
         }))
       : [];
     
-    return [...zecatCategories, ...cdoCategoriesWithSource];
+    // Log status of CDO API
+    if (cdoResult.status === 'fulfilled') {
+      console.log(`Successfully fetched ${cdoCategoriesWithSource.length} categories from CDO`);
+    } else {
+      console.error('Failed to fetch CDO categories:', cdoResult.reason);
+    }
+    
+    const allCategories = [...zecatCategories, ...cdoCategoriesWithSource];
+    console.log(`Returning ${allCategories.length} total categories`);
+    
+    return allCategories;
   } catch (error) {
     console.error('Error fetching unified categories:', error);
     // Return empty categories in case of a critical error

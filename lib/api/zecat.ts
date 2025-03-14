@@ -32,21 +32,55 @@ function buildQueryParams(filters: ProductFilters): string {
 }
 
 /**
- * Fetch all product families
+ * Fetch families (categories)
  */
 export async function getFamilies(): Promise<FamiliesResponse> {
-  try {
-    const response = await fetch(`${API_BASE_URL}/family/`);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch families: ${response.status}`);
+  // Configuración de reintentos
+  const maxRetries = 2;
+  const timeout = 5000; // 5 segundos de timeout
+  let retries = 0;
+  
+  while (retries <= maxRetries) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      
+      const response = await fetch(`${API_BASE_URL}/family/`, {
+        signal: controller.signal
+      }).finally(() => clearTimeout(timeoutId));
+      
+      if (!response.ok) {
+        console.warn(`Attempt ${retries + 1}/${maxRetries + 1}: Failed to fetch families: ${response.status}`);
+        if (retries === maxRetries) {
+          throw new Error(`Failed to fetch families: ${response.status}`);
+        }
+        // Esperar antes del siguiente reintento (backoff exponencial)
+        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retries)));
+        retries++;
+        continue;
+      }
+      
+      return await response.json();
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.warn(`Attempt ${retries + 1}/${maxRetries + 1}: Request timed out after ${timeout}ms`);
+      } else {
+        console.error(`Attempt ${retries + 1}/${maxRetries + 1}: Error fetching families:`, error);
+      }
+      
+      if (retries === maxRetries) {
+        console.error('All retry attempts failed for fetching families');
+        throw error;
+      }
+      
+      // Esperar antes del siguiente reintento (backoff exponencial)
+      await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retries)));
+      retries++;
     }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching families:', error);
-    throw error;
   }
+  
+  // Este código nunca debería ejecutarse debido a las comprobaciones anteriores
+  throw new Error('Failed to fetch families after maximum retries');
 }
 
 /**

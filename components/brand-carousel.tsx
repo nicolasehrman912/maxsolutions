@@ -33,9 +33,13 @@ const brands = [
 
 export function BrandCarousel() {
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [isMounted, setIsMounted] = useState(false)
   const carouselRef = useRef<HTMLDivElement>(null)
 
+  // Solo correr efectos después de la hidratación
   useEffect(() => {
+    setIsMounted(true)
+    
     const interval = setInterval(() => {
       setCurrentIndex((prevIndex) => (prevIndex + 1) % brands.length)
     }, 3000)
@@ -44,6 +48,9 @@ export function BrandCarousel() {
   }, [])
 
   useEffect(() => {
+    // Solo desplazar después de la hidratación
+    if (!isMounted) return
+    
     if (carouselRef.current) {
       const scrollAmount = currentIndex * (carouselRef.current.scrollWidth / brands.length)
       carouselRef.current.scrollTo({
@@ -51,7 +58,7 @@ export function BrandCarousel() {
         behavior: "smooth",
       })
     }
-  }, [currentIndex])
+  }, [currentIndex, isMounted])
 
   return (
     <section className="space-y-6">
