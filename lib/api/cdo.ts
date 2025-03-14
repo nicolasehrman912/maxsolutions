@@ -49,11 +49,15 @@ export async function getCDOProducts(filters: CDOProductFilters = {}): Promise<C
     
     console.log(`Fetching CDO products from: ${url}`);
     
+    // Utilizamos la API de Next.js para cache configurable
     const response = await fetch(url, {
       headers: {
         'Accept': 'application/json',
       },
-      cache: 'no-store' // Disable caching for this request
+      // Usar cache con revalidación cada 1 hora
+      next: { 
+        revalidate: 3600 
+      }
     });
     
     if (!response.ok) {
