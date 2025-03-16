@@ -365,55 +365,7 @@ async function ProductListingWithPagination({
         </p>
       </div>
       
-      {/* Mostrar indicadores de filtros activos */}
-      {(categories && categories.length > 0 || search) && (
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <span className="text-sm">Filtros activos:</span>
-          
-          {search && (
-            <div className="flex items-center gap-1 bg-muted rounded-full px-3 py-1 text-xs">
-              <span>Búsqueda: {search}</span>
-              <a href={`/products?${categories ? categories.map(cat => `category=${cat}`).join('&') : ''}`}>
-                <Button variant="ghost" size="icon" className="h-4 w-4">
-                  <span>×</span>
-                </Button>
-              </a>
-            </div>
-          )}
-          
-          {categories && categories.map(catId => {
-            // Encontrar la categoría correspondiente para mostrar su nombre
-            const category = allCategories.find(c => c.id.toString() === catId);
-            const categoryName = category 
-              ? (category.source === 'zecat' 
-                ? ((category as any).title || (category as any).description || 'Categoría') 
-                : ((category as any).name || 'Categoría'))
-              : catId;
-            
-            // Crear URL sin esta categoría
-            const otherCategories = categories.filter(id => id !== catId);
-            const newUrl = `/products?${otherCategories.map(cat => `category=${cat}`).join('&')}${search ? `&search=${encodeURIComponent(search)}` : ''}`;
-            
-            return (
-              <div key={catId} className="flex items-center gap-1 bg-muted rounded-full px-3 py-1 text-xs">
-                <span>{categoryName}</span>
-                <a href={newUrl}>
-                  <Button variant="ghost" size="icon" className="h-4 w-4">
-                    <span>×</span>
-                  </Button>
-                </a>
-              </div>
-            );
-          })}
-          
-          <a href="/products?search=">
-            <Button variant="outline" size="sm" className="ml-2 text-xs">
-              Limpiar todos
-            </Button>
-          </a>
-        </div>
-      )}
-      
+
       {products.length > 0 ? (
         <ProductGrid products={products} />
       ) : (

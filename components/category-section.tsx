@@ -6,7 +6,7 @@ import { getCDOCategories } from "@/lib/api/cdo"
 const FEATURED_CATEGORIES = [
   { id: 101, name: 'Escritura' },
   { id: 161, name: 'Tecnología' },
-  { id: 131, name: 'Oficina y Negocios' },
+  { id: 131, name: 'Proximos ingresos' },
   { id: 221, name: 'Bolsas, Bolsos, Maletines y Mochilas' }
 ];
 

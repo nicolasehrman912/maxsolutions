@@ -140,7 +140,7 @@ export async function getUnifiedProducts(filters: UnifiedFilters = {}): Promise<
     }
     
     if (filters.source === 'cdo') {
-      const cdoFilters = mapUnifiedToCDOFilters(limitedFilters);
+
       
       console.time('fetchCdoProducts');
       const response = await getCDOProducts(cdoFilters);
