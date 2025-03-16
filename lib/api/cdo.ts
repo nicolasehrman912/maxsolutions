@@ -43,58 +43,99 @@ function buildQueryParams(filters: CDOProductFilters = {}): string {
  * Fetch products from CDO API with optional filtering
  */
 export async function getCDOProducts(filters: CDOProductFilters = {}): Promise<CDOProductsResponse> {
-  try {
-    const queryParams = buildQueryParams(filters);
-    const url = `${API_BASE_URL}/products?${queryParams}`;
-    
-    console.log(`Fetching CDO products from: ${url}`);
-    
-    // Utilizamos la API de Next.js para cache configurable
-    const response = await fetch(url, {
-      headers: {
-        'Accept': 'application/json',
-      },
-      // Usar cache con revalidación cada 1 hora
-      next: { 
-        revalidate: 3600 
+  // Configuración de reintentos
+  const maxRetries = 2;
+  const timeout = 8000; // 8 segundos de timeout para productos (puede ser más grande)
+  let retries = 0;
+  
+  while (retries <= maxRetries) {
+    try {
+      console.time('getCDOProducts');
+      
+      const queryParams = buildQueryParams(filters);
+      const url = `${API_BASE_URL}/products?${queryParams}`;
+      
+      console.log(`Fetch attempt ${retries + 1}/${maxRetries + 1}: Fetching CDO products`);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      
+      // Utilizamos la API de Next.js para cache configurable
+      const response = await fetch(url, {
+        headers: {
+          'Accept': 'application/json',
+        },
+        // Usar cache con revalidación cada 4 horas
+        next: { 
+          revalidate: 14400 
+        },
+        signal: controller.signal
+      }).finally(() => clearTimeout(timeoutId));
+      
+      if (!response.ok) {
+        console.warn(`Attempt ${retries + 1}/${maxRetries + 1}: Failed to fetch CDO products: ${response.status}`);
+        if (retries === maxRetries) {
+          console.error(`All ${maxRetries + 1} attempts failed with status: ${response.status}`);
+          console.timeEnd('getCDOProducts');
+          return {
+            products: [],
+            total_pages: 1,
+            current_page: 1
+          };
+        }
+        // Esperar antes del siguiente reintento (backoff exponencial)
+        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retries)));
+        retries++;
+        continue;
       }
-    });
-    
-    if (!response.ok) {
-      console.error(`Failed to fetch CDO products: ${response.status}`);
-      // Return empty products instead of throwing
+      
+      const data = await response.json();
+      
+      // Add source property to each product
+      const productsWithSource = Array.isArray(data) ? data.map(product => ({
+        ...product,
+        source: 'cdo' as const
+      })) : [];
+      
+      console.log(`Successfully fetched ${productsWithSource.length} CDO products`);
+      
+      console.timeEnd('getCDOProducts');
       return {
-        products: [],
-        total_pages: 1,
-        current_page: 1
+        products: productsWithSource,
+        // These properties may not be available in the API response
+        total_pages: data.total_pages || Math.ceil(productsWithSource.length / (filters.page_size || 24)),
+        current_page: filters.page_number || 1
       };
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.warn(`Attempt ${retries + 1}/${maxRetries + 1}: Request timed out after ${timeout}ms`);
+      } else {
+        console.error(`Attempt ${retries + 1}/${maxRetries + 1}: Error fetching CDO products:`, error);
+      }
+      
+      if (retries === maxRetries) {
+        console.error('All retry attempts failed for fetching CDO products');
+        console.timeEnd('getCDOProducts');
+        return {
+          products: [],
+          total_pages: 1,
+          current_page: 1
+        };
+      }
+      
+      // Esperar antes del siguiente reintento (backoff exponencial)
+      await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retries)));
+      retries++;
     }
-    
-    const data = await response.json();
-    
-    // Add source property to each product
-    const productsWithSource = Array.isArray(data) ? data.map(product => ({
-      ...product,
-      source: 'cdo' as const
-    })) : [];
-    
-    console.log(`Successfully fetched ${productsWithSource.length} CDO products`);
-    
-    return {
-      products: productsWithSource,
-      // These properties may not be available in the API response
-      total_pages: data.total_pages || Math.ceil(productsWithSource.length / (filters.page_size || 24)),
-      current_page: filters.page_number || 1
-    };
-  } catch (error) {
-    console.error('Error fetching CDO products:', error);
-    // Return empty products instead of re-throwing
-    return {
-      products: [],
-      total_pages: 1,
-      current_page: 1
-    };
   }
+  
+  // Este código nunca debería ejecutarse debido a las comprobaciones anteriores
+  console.timeEnd('getCDOProducts');
+  return {
+    products: [],
+    total_pages: 1,
+    current_page: 1
+  };
 }
 
 /**
@@ -152,51 +193,94 @@ export async function getCDOProductById(id: number): Promise<CDOProduct | null> 
 }
 
 /**
- * Get all categories from the CDO API
+ * Get all available product categories from CDO
  */
 export async function getCDOCategories(): Promise<CDOCategory[]> {
-  try {
-    // Since the API doesn't appear to have a dedicated categories endpoint,
-    // we'll fetch a sample of products and extract unique categories
-    const url = `${API_BASE_URL}/products?auth_token=${API_TOKEN}&page_size=50`;
-    
-    console.log(`Fetching CDO categories from: ${url}`);
-    
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      console.error(`Failed to fetch CDO products for categories: ${response.status}`);
-      // Return empty categories instead of throwing
-      return [];
-    }
-    
-    const data = await response.json();
-    
-    if (!Array.isArray(data)) {
-      console.warn('CDO API did not return an array for products');
-      return [];
-    }
-    
-    // Extract all categories and remove duplicates
-    const categories = new Map<number, CDOCategory>();
-    
-    data.forEach((product: any) => {
-      if (Array.isArray(product.categories)) {
-        product.categories.forEach((category: CDOCategory) => {
-          if (!categories.has(category.id)) {
-            categories.set(category.id, category);
-          }
-        });
+  // Configuración de reintentos
+  const maxRetries = 2;
+  const timeout = 5000; // 5 segundos de timeout
+  let retries = 0;
+  
+  while (retries <= maxRetries) {
+    try {
+      console.time('getCDOCategories');
+      
+      // Since the API doesn't appear to have a dedicated categories endpoint,
+      // we'll fetch a sample of products and extract unique categories
+      const url = `${API_BASE_URL}/products?auth_token=${API_TOKEN}&page_size=50`;
+      
+      console.log(`Fetch attempt ${retries + 1}/${maxRetries + 1}: Fetching CDO categories`);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      
+      const response = await fetch(url, {
+        signal: controller.signal
+      }).finally(() => clearTimeout(timeoutId));
+      
+      if (!response.ok) {
+        console.warn(`Attempt ${retries + 1}/${maxRetries + 1}: Failed to fetch CDO categories: ${response.status}`);
+        if (retries === maxRetries) {
+          console.error(`All ${maxRetries + 1} attempts failed with status: ${response.status}`);
+          console.timeEnd('getCDOCategories');
+          return [];
+        }
+        // Esperar antes del siguiente reintento (backoff exponencial)
+        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retries)));
+        retries++;
+        continue;
       }
-    });
-    
-    const result = Array.from(categories.values());
-    console.log(`Successfully extracted ${result.length} CDO categories`);
-    
-    return result;
-  } catch (error) {
-    console.error('Error fetching CDO categories:', error);
-    // Return empty categories instead of throwing
-    return [];
+      
+      const data = await response.json();
+      
+      if (!Array.isArray(data)) {
+        console.warn('CDO API did not return an array for products');
+        console.timeEnd('getCDOCategories');
+        return [];
+      }
+      
+      // Extract all categories and remove duplicates - optimizado para ser más rápido
+      const categories = new Map<number, CDOCategory>();
+      
+      // Límite para el procesamiento por producto
+      const productLimit = Math.min(data.length, 50);
+      
+      for (let i = 0; i < productLimit; i++) {
+        const product = data[i];
+        if (Array.isArray(product.categories)) {
+          for (const category of product.categories) {
+            if (!categories.has(category.id)) {
+              categories.set(category.id, category);
+            }
+          }
+        }
+      }
+      
+      const result = Array.from(categories.values());
+      console.log(`Successfully extracted ${result.length} CDO categories`);
+      
+      console.timeEnd('getCDOCategories');
+      return result;
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.warn(`Attempt ${retries + 1}/${maxRetries + 1}: Request timed out after ${timeout}ms`);
+      } else {
+        console.error(`Attempt ${retries + 1}/${maxRetries + 1}: Error fetching CDO categories:`, error);
+      }
+      
+      if (retries === maxRetries) {
+        console.error('All retry attempts failed for fetching CDO categories');
+        console.timeEnd('getCDOCategories');
+        return [];
+      }
+      
+      // Esperar antes del siguiente reintento (backoff exponencial)
+      await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retries)));
+      retries++;
+    }
   }
+  
+  // Este código nunca debería ejecutarse debido a las comprobaciones anteriores
+  console.timeEnd('getCDOCategories');
+  return [];
 } 

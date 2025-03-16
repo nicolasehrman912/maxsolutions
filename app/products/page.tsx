@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export const dynamic = 'force-dynamic'; // Forzar renderizado dinámico para los filtros
-export const revalidate = 3600 // Revalidate this page every hour
+export const revalidate = 14400 // Revalidar esta página cada 4 horas
 
 type SearchParams = {
   page?: string
@@ -163,32 +163,9 @@ async function CategoriesSection({ categoryParam }: { categoryParam?: string | s
     // Intento obtener todas las categorías, pero no detengo la aplicación si falla
     const allCategories = await getUnifiedCategories();
     
-    // Obtener todos los productos para determinar qué categorías tienen productos
-    const allProductsResponse = await getUnifiedProducts({
-      limit: 1000, // Obtener un número razonable de productos para analizar categorías
-      source: undefined
-    });
-    
-    // Extraer un conjunto de IDs de categorías que tienen productos
-    const categoriesWithProducts = new Set<string>();
-    
-    allProductsResponse.products.forEach(product => {
-      if (product.source === 'zecat' && product.families) {
-        // Para productos Zecat, agregar cada familia (categoría)
-        product.families.forEach(family => {
-          categoriesWithProducts.add(family.id.toString());
-        });
-      } else if (product.source === 'cdo' && product.categories) {
-        // Para productos CDO, agregar cada categoría
-        product.categories.forEach(category => {
-          categoriesWithProducts.add(category.id.toString());
-        });
-      }
-    });
-    
-    // Filtrar categorías que tienen productos
+    // Ya no verificamos qué categorías tienen productos porque es muy costoso
+    // Asumimos que todas las categorías que vienen de la API tienen productos
     const categoriesWithProductsSorted = allCategories
-      .filter(category => categoriesWithProducts.has(category.id.toString()))
       .sort((a, b) => {
         const nameA = a.source === 'zecat' 
           ? ((a as any).title || (a as any).description || 'Categoría') 
@@ -200,7 +177,7 @@ async function CategoriesSection({ categoryParam }: { categoryParam?: string | s
       });
     
     if (categoriesWithProductsSorted.length === 0) {
-      console.log('No hay categorías con productos disponibles');
+      console.log('No hay categorías disponibles');
       return null;
     }
     
@@ -305,6 +282,7 @@ async function ProductListingWithPagination({
   search?: string,
   allCategories: UnifiedCategory[]
 }) {
+  console.time('fetchProducts');
   const productsResponse = await getUnifiedProducts({
     page,
     limit,
@@ -313,31 +291,33 @@ async function ProductListingWithPagination({
     search,
     source: undefined
   });
+  console.timeEnd('fetchProducts');
   
-  // Transform API products to match our product structure
+  console.time('transformProducts');
+  // Transform API products to match our product structure - optimizado para procesamiento más rápido
   const products = productsResponse.products.map(product => {
     if (product.source === 'zecat') {
-      // Handle Zecat products
-      const totalStock = product.products && Array.isArray(product.products)
+      // Handle Zecat products - simplificado para reducir cálculos
+      const hasVariants = product.products && Array.isArray(product.products) && product.products.length > 0;
+      const totalStock = hasVariants
         ? product.products.reduce((sum, variant) => sum + (variant.stock || 0), 0)
         : 0;
         
       return {
         id: createCompositeId('zecat', product.id),
         name: product.name,
-        image: product.images[0]?.image_url || "/placeholder.svg?height=400&width=300",
-        category: product.families[0]?.description || "general",
+        image: product.images?.[0]?.image_url || "/placeholder.svg?height=400&width=300",
+        category: product.families?.[0]?.description || "general",
         isNew: totalStock > 0,
         totalStock: totalStock,
         source: 'zecat' as const
       };
     } else {
-      // Handle CDO products
-      const firstVariant = product.variants && product.variants.length > 0 
-        ? product.variants[0] 
-        : null;
+      // Handle CDO products - simplificado para reducir cálculos
+      const hasVariants = product.variants && Array.isArray(product.variants) && product.variants.length > 0;
+      const firstVariant = hasVariants ? product.variants[0] : null;
       
-      const totalStock = product.variants && Array.isArray(product.variants)
+      const totalStock = hasVariants
         ? product.variants.reduce((sum, variant) => sum + (variant.stock_available || 0), 0)
         : 0;
       
@@ -345,13 +325,14 @@ async function ProductListingWithPagination({
         id: createCompositeId('cdo', product.id),
         name: product.name,
         image: firstVariant?.picture?.original || "/placeholder.svg?height=400&width=300",
-        category: product.categories[0]?.name || "general",
+        category: product.categories?.[0]?.name || "general",
         isNew: totalStock > 0,
         totalStock: totalStock,
         source: 'cdo' as const
       };
     }
   });
+  console.timeEnd('transformProducts');
   
   // Get total pages and product count
   const totalPages = productsResponse.total_pages;
