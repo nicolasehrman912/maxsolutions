@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input"
 
 // Create a client-only mobile menu component
 const MobileMenu = dynamic(
-  () => import('./mobile-menu').then(mod => mod.MobileMenu),
+  () => import('@/components/mobile-menu').then(mod => mod.MobileMenu),
   { ssr: false } // Never render on server
 )
 
