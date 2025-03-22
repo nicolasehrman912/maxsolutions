@@ -326,123 +326,148 @@ async function ProductListingWithPagination({
   search?: string,
   allCategories: UnifiedCategory[]
 }) {
-  const productsResponse = await getUnifiedProducts({
-    page,
-    limit,
-    categories,
-    stock,
-    search,
-    source: undefined
-  });
+  // Optimización: Configurar un timeout para evitar esperas infinitas
+  const MAX_TIMEOUT = 5000; // 5 segundos máximo de espera
   
-  // Transform API products to match our product structure - optimizado para procesamiento más rápido
-  const products = productsResponse.products.map(product => {
-    if (product.source === 'zecat') {
-      // Handle Zecat products - simplificado para reducir cálculos
-      const hasVariants = product.products && Array.isArray(product.products) && product.products.length > 0;
-      const totalStock = hasVariants
-        ? product.products.reduce((sum, variant) => sum + (variant.stock || 0), 0)
-        : 0;
+  try {
+    // Usar Promise.race para implementar un timeout
+    const productsPromise = getUnifiedProducts({
+      page,
+      limit,
+      categories,
+      stock,
+      search,
+      source: undefined
+    });
+    
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error("Timeout obteniendo productos")), MAX_TIMEOUT);
+    });
+    
+    const productsResponse = await Promise.race([
+      productsPromise,
+      timeoutPromise
+    ]) as Awaited<ReturnType<typeof getUnifiedProducts>>;
+    
+    // Optimización: Simplificar el mapeo de productos para reducir el procesamiento
+    const products = productsResponse.products.map(product => {
+      // Variables comunes para ambos tipos de productos
+      let id, name, image, category, totalStock = 0;
+      
+      if (product.source === 'zecat') {
+        // Procesamiento mínimo para productos Zecat
+        id = createCompositeId('zecat', product.id);
+        name = product.name;
+        image = product.images?.[0]?.image_url || "/placeholder.svg?height=400&width=300";
+        category = product.families?.[0]?.description || "general";
+        totalStock = product.products?.reduce((sum, v) => sum + (v.stock || 0), 0) || 0;
+      } else {
+        // Procesamiento mínimo para productos CDO
+        id = createCompositeId('cdo', product.id);
+        name = product.name;
+        image = product.variants?.[0]?.picture?.original || "/placeholder.svg?height=400&width=300";
+        category = product.categories?.[0]?.name || "general";
+        totalStock = product.variants?.reduce((sum, v) => sum + (v.stock_available || 0), 0) || 0;
+      }
+      
+      // Retornar objeto con estructura mínima necesaria
+      return {
+        id,
+        name,
+        image,
+        category,
+        isNew: totalStock > 0,
+        totalStock,
+        source: product.source
+      };
+    });
+    
+    // Get total pages and product count
+    const totalPages = productsResponse.total_pages;
+    const totalProducts = productsResponse.count;
+    
+    // Función auxiliar para construir la URL de paginación con múltiples categorías
+    const buildPaginationUrl = (pageNum: number) => {
+      let url = `/products?page=${pageNum}`;
+      
+      // Agregar categorías seleccionadas
+      if (Array.isArray(categoryParam)) {
+        categoryParam.forEach(cat => {
+          url += `&category=${cat}`;
+        });
+      } else if (categoryParam) {
+        url += `&category=${categoryParam}`;
+      }
+      
+      // Agregar término de búsqueda si existe
+      if (search) {
+        url += `&search=${encodeURIComponent(search)}`;
+      }
+      
+      return url;
+    };
+    
+    return (
+      <>
+        <div className="flex items-center justify-between mb-6">
+          <p className="text-sm text-muted-foreground">
+            {totalProducts} productos encontrados
+          </p>
+        </div>
         
-      return {
-        id: createCompositeId('zecat', product.id),
-        name: product.name,
-        image: product.images?.[0]?.image_url || "/placeholder.svg?height=400&width=300",
-        category: product.families?.[0]?.description || "general",
-        isNew: totalStock > 0,
-        totalStock: totalStock,
-        source: 'zecat' as const
-      };
-    } else {
-      // Handle CDO products - simplificado para reducir cálculos
-      const hasVariants = product.variants && Array.isArray(product.variants) && product.variants.length > 0;
-      const firstVariant = hasVariants ? product.variants[0] : null;
-      
-      const totalStock = hasVariants
-        ? product.variants.reduce((sum, variant) => sum + (variant.stock_available || 0), 0)
-        : 0;
-      
-      return {
-        id: createCompositeId('cdo', product.id),
-        name: product.name,
-        image: firstVariant?.picture?.original || "/placeholder.svg?height=400&width=300",
-        category: product.categories?.[0]?.name || "general",
-        isNew: totalStock > 0,
-        totalStock: totalStock,
-        source: 'cdo' as const
-      };
-    }
-  });
-  
-  // Get total pages and product count
-  const totalPages = productsResponse.total_pages;
-  const totalProducts = productsResponse.count;
-  
-  // Función auxiliar para construir la URL de paginación con múltiples categorías
-  const buildPaginationUrl = (pageNum: number) => {
-    let url = `/products?page=${pageNum}`;
+        {products.length > 0 ? (
+          <ProductGrid products={products} />
+        ) : (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground mb-2">No se encontraron productos que coincidan con los criterios.</p>
+            {categoryParam && (
+              <p className="text-muted-foreground mb-6">
+                Prueba seleccionando diferentes categorías o quitando algunos filtros.
+              </p>
+            )}
+            <a href="/products?search=">
+              <Button variant="outline">Ver todos los productos</Button>
+            </a>
+          </div>
+        )}
+        
+        {/* Pagination Controls - Simplified */}
+        {totalPages > 1 && (
+          <div className="flex justify-center gap-2 mt-8">
+            {page > 1 && (
+              <a href={buildPaginationUrl(page - 1)}>
+                <Button variant="outline">Anterior</Button>
+              </a>
+            )}
+            
+            <span className="flex items-center px-4 py-2 border rounded-md">
+              Página {page} de {totalPages}
+            </span>
+            
+            {page < totalPages && (
+              <a href={buildPaginationUrl(page + 1)}>
+                <Button variant="outline">Siguiente</Button>
+              </a>
+            )}
+          </div>
+        )}
+      </>
+    );
+  } catch (error) {
+    console.error('Error cargando productos:', error);
     
-    // Agregar categorías seleccionadas
-    if (Array.isArray(categoryParam)) {
-      categoryParam.forEach(cat => {
-        url += `&category=${cat}`;
-      });
-    } else if (categoryParam) {
-      url += `&category=${categoryParam}`;
-    }
-    
-    // Siempre agregar término de búsqueda, incluso si está vacío
-    url += `&search=${encodeURIComponent(search || '')}`;
-    
-    return url;
-  };
-  
-  return (
-    <>
-      <div className="flex items-center justify-between mb-6">
-        <p className="text-sm text-muted-foreground">
-          {totalProducts} productos encontrados
+    // Proporcionar una respuesta rápida en caso de error
+    return (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground mb-2">Tiempo de respuesta excedido.</p>
+        <p className="text-muted-foreground mb-6">
+          La búsqueda de productos está tomando más tiempo del esperado.
         </p>
+        <a href="/products?limit=8">
+          <Button variant="outline">Intentar con menos productos</Button>
+        </a>
       </div>
-      
-
-      {products.length > 0 ? (
-        <ProductGrid products={products} />
-      ) : (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground mb-2">No se encontraron productos que coincidan con los criterios.</p>
-          {categoryParam && (
-            <p className="text-muted-foreground mb-6">
-              Prueba seleccionando diferentes categorías o quitando algunos filtros.
-            </p>
-          )}
-          <a href="/products?search=">
-            <Button variant="outline">Ver todos los productos</Button>
-          </a>
-        </div>
-      )}
-      
-      {/* Pagination Controls */}
-      {totalPages > 1 && (
-        <div className="flex justify-center gap-2 mt-8">
-          {page > 1 && (
-            <a href={buildPaginationUrl(page - 1)}>
-              <Button variant="outline">Anterior</Button>
-            </a>
-          )}
-          
-          <span className="flex items-center px-4 py-2 border rounded-md">
-            Página {page} de {totalPages}
-          </span>
-          
-          {page < totalPages && (
-            <a href={buildPaginationUrl(page + 1)}>
-              <Button variant="outline">Siguiente</Button>
-            </a>
-          )}
-        </div>
-      )}
-    </>
-  );
+    );
+  }
 }
 

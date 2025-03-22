@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import Image from "next/image"
+import { memo, useMemo } from "react"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Phone } from "lucide-react"
@@ -19,16 +19,20 @@ type Product = {
 }
 
 export function ProductGrid({ products }: { products: Product[] }) {
+  // Memoize products to prevent unnecessary re-renders
+  const memoizedProducts = useMemo(() => products, [products]);
+  
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-      {products.map((product) => (
+      {memoizedProducts.map((product) => (
         <ProductCard key={product.id} product={product} />
       ))}
     </div>
   )
 }
 
-function ProductCard({ product }: { product: Product }) {
+// Memoized ProductCard to prevent re-renders when props don't change
+const ProductCard = memo(function ProductCard({ product }: { product: Product }) {
   // Format WhatsApp message for product inquiry
   const message = encodeURIComponent(`Hola, estoy interesado en el producto "${product.name}" (ID: ${product.id}). ¿Podrías proporcionarme más información?`);
   const whatsappUrl = `https://wa.me/5491124779637?text=${message}`; // Formato correcto con código de país
@@ -37,11 +41,12 @@ function ProductCard({ product }: { product: Product }) {
     <Card className="overflow-hidden group">
       <Link href={`/products/${product.id}`}>
         <div className="relative aspect-square overflow-hidden">
-          <Image
+          {/* Use standard img tag for better performance */}
+          <img
             src={product.image || "/placeholder.svg"}
             alt={product.name}
-            fill
-            className="object-cover transition-transform group-hover:scale-105"
+            loading="lazy"
+            className="object-cover w-full h-full transition-transform group-hover:scale-105"
           />
         </div>
       </Link>
@@ -61,5 +66,5 @@ function ProductCard({ product }: { product: Product }) {
       </CardFooter>
     </Card>
   )
-}
+})
 
