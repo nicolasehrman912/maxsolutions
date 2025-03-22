@@ -1,8 +1,12 @@
-import Link from "next/link"
-import Image from "next/image"
-import { getCDOCategories } from "@/lib/api/cdo"
+'use client';
 
-// Usamos categorías predefinidas para asegurar que son importantes
+import Link from "next/link"
+// Remove dynamic imports
+// import { useEffect, useState } from "react"
+// import { getCDOCategories } from "@/lib/api/cdo"
+// import { getStoredCategories } from "@/lib/local-storage"
+
+// Static categories
 const FEATURED_CATEGORIES = [
   { id: 101, name: 'Escritura' },
   { id: 161, name: 'Tecnología' },
@@ -10,28 +14,8 @@ const FEATURED_CATEGORIES = [
   { id: 221, name: 'Bolsas, Bolsos, Maletines y Mochilas' }
 ];
 
-async function fetchCategories() {
-  try {
-    // Obtener categorías de CDO en lugar de Zecat
-    const cdoCategories = await getCDOCategories();
-    // Filtramos para mostrar solo las categorías destacadas que queremos
-    const featuredCategories = FEATURED_CATEGORIES.map(featured => {
-      // Buscamos la categoría real en las categorías obtenidas de la API
-      const found = cdoCategories.find(cat => cat.id === featured.id);
-      // Si la encontramos, la usamos; si no, usamos la predefinida
-      return found || featured;
-    });
-    return featuredCategories;
-  } catch (error) {
-    console.error("Error fetching CDO categories:", error);
-    // Si hay un error, devolvemos las categorías predefinidas
-    return FEATURED_CATEGORIES;
-  }
-}
-
-export async function CategorySection() {
-  const categories = await fetchCategories();
-  
+export function CategorySection() {
+  // No state or effects needed for static content
   return (
     <section className="space-y-6">
       <div className="flex flex-col items-center text-center space-y-2">
@@ -41,7 +25,7 @@ export async function CategorySection() {
         </p>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
-        {categories.map((category) => (
+        {FEATURED_CATEGORIES.map((category) => (
           <Link 
             key={category.id} 
             href={`/products?search=&category=${category.id}`}

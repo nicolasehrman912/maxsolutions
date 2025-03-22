@@ -35,6 +35,22 @@ function buildQueryParams(filters: ProductFilters): string {
  * Fetch families (categories)
  */
 export async function getFamilies(): Promise<FamiliesResponse> {
+  // Verificamos si podemos usar categorías cacheadas en el cliente
+  if (typeof window !== 'undefined') {
+    try {
+      // Importar dinámicamente para evitar errores de SSR
+      const { getStoredCategories } = await import('../local-storage');
+      const cachedCategories = getStoredCategories('zecat');
+      
+      if (cachedCategories && cachedCategories.length > 0) {
+        console.log(`Using ${cachedCategories.length} cached Zecat families from localStorage`);
+        return { families: cachedCategories };
+      }
+    } catch (error) {
+      console.error('Error accessing localStorage for Zecat families:', error);
+    }
+  }
+  
   // Configuración de reintentos
   const maxRetries = 2;
   const timeout = 5000; // 5 segundos de timeout
@@ -46,7 +62,11 @@ export async function getFamilies(): Promise<FamiliesResponse> {
       const timeoutId = setTimeout(() => controller.abort(), timeout);
       
       const response = await fetch(`${API_BASE_URL}/family/`, {
-        signal: controller.signal
+        signal: controller.signal,
+        // Usar cache con revalidación cada 4 horas
+        next: { 
+          revalidate: 14400 
+        },
       }).finally(() => clearTimeout(timeoutId));
       
       if (!response.ok) {
@@ -60,7 +80,20 @@ export async function getFamilies(): Promise<FamiliesResponse> {
         continue;
       }
       
-      return await response.json();
+      const data = await response.json();
+      
+      // Guardar en localStorage si estamos en el cliente
+      if (typeof window !== 'undefined' && data && data.families) {
+        try {
+          const { saveCategories } = await import('../local-storage');
+          saveCategories('zecat', data.families);
+          console.log('Zecat families saved to localStorage');
+        } catch (error) {
+          console.error('Error saving Zecat families to localStorage:', error);
+        }
+      }
+      
+      return data;
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
         console.warn(`Attempt ${retries + 1}/${maxRetries + 1}: Request timed out after ${timeout}ms`);
@@ -87,21 +120,68 @@ export async function getFamilies(): Promise<FamiliesResponse> {
  * Fetch products with optional filtering
  */
 export async function getProducts(filters: ProductFilters = {}): Promise<GenericProductsResponse> {
-  try {
-    const queryParams = buildQueryParams(filters);
-    const url = `${API_BASE_URL}/generic_product${queryParams ? `?${queryParams}` : ''}`;
-    
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch products: ${response.status}`);
+  // Configuración de reintentos
+  const maxRetries = 2;
+  const timeout = 12000; // 12 segundos de timeout
+  let retries = 0;
+  
+  while (retries <= maxRetries) {
+    try {
+      const queryParams = buildQueryParams(filters);
+      const url = `${API_BASE_URL}/generic_product${queryParams ? `?${queryParams}` : ''}`;
+      
+      console.log(`Fetch attempt ${retries + 1}/${maxRetries + 1}: Fetching Zecat products`);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      
+      // Usar caché para mejorar rendimiento
+      const response = await fetch(url, {
+        signal: controller.signal,
+        // Usar caché con revalidación para evitar llamadas innecesarias
+        next: {
+          revalidate: 14400, // 4 horas
+          tags: ['zecat-products']
+        }
+      }).finally(() => clearTimeout(timeoutId));
+      
+      if (!response.ok) {
+        console.warn(`Attempt ${retries + 1}/${maxRetries + 1}: Failed to fetch Zecat products: ${response.status}`);
+        if (retries === maxRetries) {
+          throw new Error(`Failed to fetch products: ${response.status}`);
+        }
+        // Esperar antes del siguiente reintento (backoff exponencial)
+        const backoffTime = 1500 * Math.pow(2, retries);
+        console.log(`Waiting ${backoffTime}ms before retry ${retries + 1}/${maxRetries}`);
+        await new Promise(resolve => setTimeout(resolve, backoffTime));
+        retries++;
+        continue;
+      }
+      
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.warn(`Attempt ${retries + 1}/${maxRetries + 1}: Request timed out after ${timeout}ms`);
+      } else {
+        console.error('Error fetching products:', error);
+      }
+      
+      if (retries === maxRetries) {
+        console.error('All retry attempts failed for fetching Zecat products');
+        throw error;
+      }
+      
+      // Esperar antes del siguiente reintento (backoff exponencial)
+      const backoffTime = 1500 * Math.pow(2, retries);
+      console.log(`Waiting ${backoffTime}ms before retry ${retries + 1}/${maxRetries}`);
+      await new Promise(resolve => setTimeout(resolve, backoffTime));
+      retries++;
     }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching products:', error);
-    throw error;
   }
+  
+  // Este código nunca debería ejecutarse debido a las comprobaciones anteriores
+  throw new Error('Failed to fetch products after maximum retries');
 }
 
 /**

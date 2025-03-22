@@ -40,6 +40,30 @@ function buildQueryParams(filters: CDOProductFilters = {}): string {
 }
 
 /**
+ * Helper function to check if cache should be disabled based on URL
+ * Updated for better SSR compatibility
+ */
+function shouldDisableCache(): boolean {
+  // Always safely return false during SSR or when window access is problematic
+  if (typeof window === 'undefined') return false;
+  
+  // Use a try/catch to safely handle URL parsing
+  try {
+    // Create a separate function to make this more resilient to hydration issues
+    const checkCacheParam = () => {
+      const url = new URL(window.location.href);
+      return url.searchParams.has('nocache');
+    };
+    
+    // Only execute the function if we're in the browser
+    return typeof window !== 'undefined' ? checkCacheParam() : false;
+  } catch (e) {
+    // If there's any issue, default to not disabling cache
+    return false;
+  }
+}
+
+/**
  * Fetch products from CDO API with optional filtering
  */
 export async function getCDOProducts(filters: CDOProductFilters = {}): Promise<CDOProductsResponse> {
@@ -48,35 +72,40 @@ export async function getCDOProducts(filters: CDOProductFilters = {}): Promise<C
   const timeout = 8000; // 8 segundos de timeout para productos (puede ser más grande)
   let retries = 0;
   
+  // Check if cache should be disabled
+  const disableCache = shouldDisableCache();
+  
   while (retries <= maxRetries) {
     try {
-      console.time('getCDOProducts');
-      
       const queryParams = buildQueryParams(filters);
       const url = `${API_BASE_URL}/products?${queryParams}`;
-      
-      console.log(`Fetch attempt ${retries + 1}/${maxRetries + 1}: Fetching CDO products`);
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
       
-      // Utilizamos la API de Next.js para cache configurable
-      const response = await fetch(url, {
+      // Configure fetch options
+      const fetchOptions: RequestInit = {
         headers: {
           'Accept': 'application/json',
         },
-        // Usar cache con revalidación cada 4 horas
-        next: { 
-          revalidate: 14400 
-        },
         signal: controller.signal
-      }).finally(() => clearTimeout(timeoutId));
+      };
+      
+      // Apply caching strategy based on nocache parameter
+      if (!disableCache) {
+        // Use cache with revalidation every 4 hours if cache not disabled
+        fetchOptions.next = { revalidate: 14400 };
+      } else {
+        // Force fresh data when nocache is present
+        fetchOptions.cache = 'no-store';
+        fetchOptions.next = { revalidate: 0 };
+      }
+      
+      // Utilizamos la API de Next.js para cache configurable
+      const response = await fetch(url, fetchOptions).finally(() => clearTimeout(timeoutId));
       
       if (!response.ok) {
-        console.warn(`Attempt ${retries + 1}/${maxRetries + 1}: Failed to fetch CDO products: ${response.status}`);
         if (retries === maxRetries) {
-          console.error(`All ${maxRetries + 1} attempts failed with status: ${response.status}`);
-          console.timeEnd('getCDOProducts');
           return {
             products: [],
             total_pages: 1,
@@ -97,9 +126,6 @@ export async function getCDOProducts(filters: CDOProductFilters = {}): Promise<C
         source: 'cdo' as const
       })) : [];
       
-      console.log(`Successfully fetched ${productsWithSource.length} CDO products`);
-      
-      console.timeEnd('getCDOProducts');
       return {
         products: productsWithSource,
         // These properties may not be available in the API response
@@ -108,14 +134,10 @@ export async function getCDOProducts(filters: CDOProductFilters = {}): Promise<C
       };
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        console.warn(`Attempt ${retries + 1}/${maxRetries + 1}: Request timed out after ${timeout}ms`);
-      } else {
-        console.error(`Attempt ${retries + 1}/${maxRetries + 1}: Error fetching CDO products:`, error);
+        // Request timed out
       }
       
       if (retries === maxRetries) {
-        console.error('All retry attempts failed for fetching CDO products');
-        console.timeEnd('getCDOProducts');
         return {
           products: [],
           total_pages: 1,
@@ -130,7 +152,6 @@ export async function getCDOProducts(filters: CDOProductFilters = {}): Promise<C
   }
   
   // Este código nunca debería ejecutarse debido a las comprobaciones anteriores
-  console.timeEnd('getCDOProducts');
   return {
     products: [],
     total_pages: 1,
@@ -143,25 +164,31 @@ export async function getCDOProducts(filters: CDOProductFilters = {}): Promise<C
  */
 export async function getCDOProductById(id: number): Promise<CDOProduct | null> {
   try {
-    console.log(`Intentando obtener el producto CDO con ID/código: ${id}`);
+    // Check if cache should be disabled
+    const disableCache = shouldDisableCache();
     
     // Primero intentaremos obtener todos los productos y buscar entre ellos
     // ya que parece que la búsqueda directa por código está fallando con 404
     const url = `${API_BASE_URL}/products?auth_token=${API_TOKEN}&page_size=1000`;
     
-    console.log(`Buscando producto en la lista completa: ${url}`);
+    // Configure fetch options
+    const fetchOptions: RequestInit = {};
     
-    const response = await fetch(url);
+    // Apply caching strategy based on nocache parameter
+    if (disableCache) {
+      fetchOptions.cache = 'no-store';
+      fetchOptions.next = { revalidate: 0 };
+    }
+    
+    const response = await fetch(url, fetchOptions);
     
     if (!response.ok) {
-      console.error(`Error al obtener la lista de productos CDO: ${response.status}`);
       return null;
     }
     
     const data = await response.json();
     
     if (!Array.isArray(data)) {
-      console.warn('La API de CDO no devolvió un arreglo de productos');
       return null;
     }
     
@@ -175,11 +202,8 @@ export async function getCDOProductById(id: number): Promise<CDOProduct | null> 
     }
     
     if (!product) {
-      console.warn(`No se encontró ningún producto CDO con ID/código: ${id}`);
       return null;
     }
-    
-    console.log(`Producto CDO encontrado exitosamente: ${product.name}`);
     
     // Añadir propiedad de origen
     return {
@@ -187,7 +211,6 @@ export async function getCDOProductById(id: number): Promise<CDOProduct | null> 
       source: 'cdo' as const
     };
   } catch (error) {
-    console.error(`Error al buscar producto CDO con ID ${id}:`, error);
     return null;
   }
 }
@@ -196,33 +219,63 @@ export async function getCDOProductById(id: number): Promise<CDOProduct | null> 
  * Get all available product categories from CDO
  */
 export async function getCDOCategories(): Promise<CDOCategory[]> {
-  // Configuración de reintentos
-  const maxRetries = 2;
-  const timeout = 5000; // 5 segundos de timeout
+  // Check if cache should be disabled
+  const disableCache = shouldDisableCache();
+  
+  // Verificamos si podemos usar categorías cacheadas en el cliente
+  if (!disableCache && typeof window !== 'undefined') {
+    try {
+      // Importar dinámicamente para evitar errores de SSR
+      const { getStoredCategories } = await import('../local-storage');
+      const cachedCategories = getStoredCategories('cdo');
+      
+      if (cachedCategories && cachedCategories.length > 0) {
+        return cachedCategories;
+      }
+    } catch (error) {
+      // Error handling is managed by returning empty array at end
+    }
+  }
+  
+  // Configuración de reintentos - incrementado para mayor tolerancia a fallos
+  const maxRetries = 3; // Incrementado de 2 a 3
+  const timeout = 15000; // Aumentado de 8s a 15s para dar más tiempo a la API lenta
   let retries = 0;
   
   while (retries <= maxRetries) {
     try {
-      console.time('getCDOCategories');
-      
       // Since the API doesn't appear to have a dedicated categories endpoint,
       // we'll fetch a sample of products and extract unique categories
-      const url = `${API_BASE_URL}/products?auth_token=${API_TOKEN}&page_size=50`;
-      
-      console.log(`Fetch attempt ${retries + 1}/${maxRetries + 1}: Fetching CDO categories`);
+      const url = `${API_BASE_URL}/products?auth_token=${API_TOKEN}&page_size=30`; // Reducido de 50 a 30 para acelerar
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
       
-      const response = await fetch(url, {
-        signal: controller.signal
-      }).finally(() => clearTimeout(timeoutId));
+      // Configure fetch options
+      const fetchOptions: RequestInit = {
+        signal: controller.signal,
+      };
+      
+      // Apply caching strategy based on nocache parameter
+      if (!disableCache) {
+        // Use cache with SWR for regular requests
+        fetchOptions.next = { 
+          revalidate: 14400,
+          tags: ['cdo-categories']
+        };
+        // Use less time for first request, more for retries
+        fetchOptions.cache = retries === 0 ? 'force-cache' : 'no-store';
+      } else {
+        // Force fresh data when nocache is present
+        fetchOptions.cache = 'no-store';
+        fetchOptions.next = { revalidate: 0 };
+      }
+      
+      // Intentar recuperar de caché primero con stale-while-revalidate
+      const response = await fetch(url, fetchOptions).finally(() => clearTimeout(timeoutId));
       
       if (!response.ok) {
-        console.warn(`Attempt ${retries + 1}/${maxRetries + 1}: Failed to fetch CDO categories: ${response.status}`);
         if (retries === maxRetries) {
-          console.error(`All ${maxRetries + 1} attempts failed with status: ${response.status}`);
-          console.timeEnd('getCDOCategories');
           return [];
         }
         // Esperar antes del siguiente reintento (backoff exponencial)
@@ -234,53 +287,69 @@ export async function getCDOCategories(): Promise<CDOCategory[]> {
       const data = await response.json();
       
       if (!Array.isArray(data)) {
-        console.warn('CDO API did not return an array for products');
-        console.timeEnd('getCDOCategories');
         return [];
       }
       
-      // Extract all categories and remove duplicates - optimizado para ser más rápido
+      // Extraer solo la primera categoría de cada producto para mejorar rendimiento
       const categories = new Map<number, CDOCategory>();
       
       // Límite para el procesamiento por producto
-      const productLimit = Math.min(data.length, 50);
+      const productLimit = Math.min(data.length, 30);
       
       for (let i = 0; i < productLimit; i++) {
         const product = data[i];
-        if (Array.isArray(product.categories)) {
-          for (const category of product.categories) {
-            if (!categories.has(category.id)) {
-              categories.set(category.id, category);
-            }
+        if (Array.isArray(product.categories) && product.categories.length > 0) {
+          // Solo usar la primera categoría de cada producto
+          const category = product.categories[0];
+          if (!categories.has(category.id)) {
+            categories.set(category.id, category);
           }
         }
       }
       
       const result = Array.from(categories.values());
-      console.log(`Successfully extracted ${result.length} CDO categories`);
       
-      console.timeEnd('getCDOCategories');
+      // Si llegamos aquí, guardamos la respuesta en caché de manera más agresiva
+      if (!disableCache && typeof window !== 'undefined' && result.length > 0) {
+        try {
+          const { saveCategories } = await import('../local-storage');
+          saveCategories('cdo', result);
+        } catch (error) {
+          // Error accessing localStorage, continue anyway
+        }
+      }
+      
       return result;
     } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        console.warn(`Attempt ${retries + 1}/${maxRetries + 1}: Request timed out after ${timeout}ms`);
-      } else {
-        console.error(`Attempt ${retries + 1}/${maxRetries + 1}: Error fetching CDO categories:`, error);
-      }
-      
       if (retries === maxRetries) {
-        console.error('All retry attempts failed for fetching CDO categories');
-        console.timeEnd('getCDOCategories');
-        return [];
+        // Intentar obtener categorías hardcodeadas/predefinidas como último recurso
+        const fallbackCategories: CDOCategory[] = [
+          { id: 101, name: 'Escritura' },
+          { id: 161, name: 'Tecnología' },
+          { id: 131, name: 'Proximos ingresos' },
+          { id: 221, name: 'Bolsas, Bolsos, Maletines y Mochilas' }
+        ];
+        
+        // Si estamos en el cliente, guardarlas en localStorage para evitar futuros fallos
+        if (!disableCache && typeof window !== 'undefined') {
+          try {
+            const { saveCategories } = await import('../local-storage');
+            saveCategories('cdo', fallbackCategories);
+          } catch (error) {
+            // Error accessing localStorage, continue anyway
+          }
+        }
+        
+        return fallbackCategories;
       }
       
-      // Esperar antes del siguiente reintento (backoff exponencial)
-      await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retries)));
+      // Esperar antes del siguiente reintento (backoff exponencial) - incrementado
+      const backoffTime = 1500 * Math.pow(2, retries); // Incrementado de 1000ms a 1500ms
+      await new Promise(resolve => setTimeout(resolve, backoffTime));
       retries++;
     }
   }
   
   // Este código nunca debería ejecutarse debido a las comprobaciones anteriores
-  console.timeEnd('getCDOCategories');
   return [];
 } 

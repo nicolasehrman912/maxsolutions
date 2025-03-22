@@ -30,8 +30,6 @@ export function ProductGrid({ products }: { products: Product[] }) {
 
 function ProductCard({ product }: { product: Product }) {
   // Format WhatsApp message for product inquiry
-  const productName = encodeURIComponent(product.name);
-  const productId = encodeURIComponent(product.id.toString());
   const message = encodeURIComponent(`Hola, estoy interesado en el producto "${product.name}" (ID: ${product.id}). ¿Podrías proporcionarme más información?`);
   const whatsappUrl = `https://wa.me/5491124779637?text=${message}`; // Formato correcto con código de país
 

@@ -47,6 +47,30 @@ export interface UnifiedFilters {
 }
 
 /**
+ * Helper function to check if cache should be disabled based on URL
+ * Updated for better SSR compatibility
+ */
+function shouldDisableCache(): boolean {
+  // Always safely return false during SSR or when window access is problematic
+  if (typeof window === 'undefined') return false;
+  
+  // Use a try/catch to safely handle URL parsing
+  try {
+    // Create a separate function to make this more resilient to hydration issues
+    const checkCacheParam = () => {
+      const url = new URL(window.location.href);
+      return url.searchParams.has('nocache');
+    };
+    
+    // Only execute the function if we're in the browser
+    return typeof window !== 'undefined' ? checkCacheParam() : false;
+  } catch (e) {
+    // If there's any issue, default to not disabling cache
+    return false;
+  }
+}
+
+/**
  * Convert unified filters to Zecat-specific filters
  */
 function mapUnifiedToZecatFilters(unified: UnifiedFilters): ProductFilters {
@@ -78,9 +102,10 @@ function mapUnifiedToCDOFilters(unified: UnifiedFilters): CDOProductFilters {
  * Get products from both APIs or a specific one based on the 'source' filter
  */
 export async function getUnifiedProducts(filters: UnifiedFilters = {}): Promise<UnifiedProductsResponse> {
+  // Check if cache should be disabled
+  const disableCache = shouldDisableCache();
+  
   try {
-    console.time('getUnifiedProducts');
-    
     // Limitar el tamaño de página para no sobrecargar las APIs
     const limitedFilters = {
       ...filters,
@@ -91,9 +116,7 @@ export async function getUnifiedProducts(filters: UnifiedFilters = {}): Promise<
     if (filters.source === 'zecat') {
       const zecatFilters = mapUnifiedToZecatFilters(limitedFilters);
       
-      console.time('fetchZecatProducts');
       const response = await getZecatProducts(zecatFilters);
-      console.timeEnd('fetchZecatProducts');
       
       // Si se está filtrando por categorías, verificar que los productos realmente
       // pertenezcan a las categorías seleccionadas
@@ -101,17 +124,14 @@ export async function getUnifiedProducts(filters: UnifiedFilters = {}): Promise<
         const categoryIds = filters.categories.map(cat => String(cat));
         
         // Filtrar productos por categoría - optimizado para reducir iteraciones
-        console.time('filterZecatProducts');
         const filteredProducts = response.generic_products.filter(product => 
           product.families && product.families.some(family => 
             categoryIds.includes(String(family.id))
           )
         );
-        console.timeEnd('filterZecatProducts');
         
         // Si después de filtrar no hay productos, devolver lista vacía
         if (filteredProducts.length === 0) {
-          console.timeEnd('getUnifiedProducts');
           return {
             total_pages: 1,
             count: 0,
@@ -121,7 +141,6 @@ export async function getUnifiedProducts(filters: UnifiedFilters = {}): Promise<
         }
         
         // Devolver solo los productos filtrados
-        console.timeEnd('getUnifiedProducts');
         return {
           total_pages: Math.ceil(filteredProducts.length / (filters.limit || 20)),
           count: filteredProducts.length,
@@ -130,7 +149,6 @@ export async function getUnifiedProducts(filters: UnifiedFilters = {}): Promise<
         };
       }
       
-      console.timeEnd('getUnifiedProducts');
       return {
         total_pages: response.total_pages,
         count: response.count,
@@ -140,11 +158,9 @@ export async function getUnifiedProducts(filters: UnifiedFilters = {}): Promise<
     }
     
     if (filters.source === 'cdo') {
-
+      const cdoFilters = mapUnifiedToCDOFilters(limitedFilters);
       
-      console.time('fetchCdoProducts');
       const response = await getCDOProducts(cdoFilters);
-      console.timeEnd('fetchCdoProducts');
       
       // Si se está filtrando por múltiples categorías, necesitamos filtrar manualmente
       // ya que la API de CDO solo puede filtrar por una categoría
@@ -152,17 +168,14 @@ export async function getUnifiedProducts(filters: UnifiedFilters = {}): Promise<
         const categoryIds = filters.categories.map(cat => String(cat));
         
         // Filtrar productos que coincidan con alguna de las categorías seleccionadas
-        console.time('filterCdoProducts');
         const filteredProducts = response.products.filter(product => 
           product.categories && product.categories.some(category => 
             categoryIds.includes(String(category.id))
           )
         );
-        console.timeEnd('filterCdoProducts');
         
         // Si después de filtrar no hay productos, devolver lista vacía
         if (filteredProducts.length === 0) {
-          console.timeEnd('getUnifiedProducts');
           return {
             total_pages: 1,
             count: 0,
@@ -172,7 +185,6 @@ export async function getUnifiedProducts(filters: UnifiedFilters = {}): Promise<
         }
         
         // Devolver solo los productos filtrados
-        console.timeEnd('getUnifiedProducts');
         return {
           total_pages: Math.ceil(filteredProducts.length / (filters.limit || 20)),
           count: filteredProducts.length,
@@ -181,7 +193,6 @@ export async function getUnifiedProducts(filters: UnifiedFilters = {}): Promise<
         };
       }
       
-      console.timeEnd('getUnifiedProducts');
       return {
         total_pages: response.total_pages || 1,
         count: response.products.length,
@@ -193,8 +204,6 @@ export async function getUnifiedProducts(filters: UnifiedFilters = {}): Promise<
     // If no source specified, fetch from both and combine results
     // This approach ensures no ID conflicts by using the source property
     try {
-      console.time('fetchBothApis');
-      
       // Configuración de timeout para Promise.race
       const timeout = new Promise<null>((_, reject) =>
         setTimeout(() => reject(new Error('Timeout fetching products')), 8000)
@@ -206,18 +215,10 @@ export async function getUnifiedProducts(filters: UnifiedFilters = {}): Promise<
         Promise.race([getCDOProducts(mapUnifiedToCDOFilters(limitedFilters)), timeout]) as Promise<any>
       ]);
       
-      console.timeEnd('fetchBothApis');
-      
       // Fallar rápido si ambas APIs fallan
       if (zecatResult.status === 'rejected' && cdoResult.status === 'rejected') {
-        console.error('Both APIs failed:', 
-          zecatResult.reason, 
-          cdoResult.reason
-        );
         throw new Error('Failed to fetch products from both APIs');
       }
-      
-      console.time('processApiResults');
       
       // Process Zecat results (if successful)
       const zecatProducts = zecatResult.status === 'fulfilled' 
@@ -232,41 +233,34 @@ export async function getUnifiedProducts(filters: UnifiedFilters = {}): Promise<
         ? cdoResult.value.products
         : [];
       
-      console.timeEnd('processApiResults');
-      
       // Si hay filtros de categoría, filtrar de manera más eficiente
       if (filters.categories && filters.categories.length > 0) {
-        console.time('filterCombinedProducts');
-        
         const categoryIds = filters.categories.map(cat => String(cat));
         
         // Set para búsqueda más rápida de categorías
         const categoryIdsSet = new Set(categoryIds);
         
         // Filtrar productos de Zecat por categoría (families) - optimizado
-        const filteredZecatProducts = zecatProducts.filter((product) => {
+        const filteredZecatProducts = zecatProducts.filter((product: GenericProduct & { source: 'zecat' }) => {
           // Para productos Zecat, verificar si tienen familias que coincidan
-          return product.source === 'zecat' && product.families?.some((family) => 
+          return product.families?.some((family: Family) => 
             categoryIdsSet.has(String(family.id))
           );
         });
         
         // Filtrar productos de CDO por categoría - optimizado
-        const filteredCdoProducts = cdoProducts.filter((product) => {
+        const filteredCdoProducts = cdoProducts.filter((product: CDOProduct) => {
           // Para productos CDO, verificar si tienen categorías que coincidan
-          return product.source === 'cdo' && product.categories?.some((category) =>
+          return product.categories?.some((category: CDOCategory) =>
             categoryIdsSet.has(String(category.id))
           );
         });
-        
-        console.timeEnd('filterCombinedProducts');
         
         // Combinar los productos filtrados
         const allProducts = [...filteredZecatProducts, ...filteredCdoProducts];
         
         // Si después de aplicar el filtro no hay productos, devolver lista vacía
         if (allProducts.length === 0) {
-          console.timeEnd('getUnifiedProducts');
           return {
             total_pages: 1,
             count: 0,
@@ -275,7 +269,6 @@ export async function getUnifiedProducts(filters: UnifiedFilters = {}): Promise<
           };
         }
         
-        console.time('paginateResults');
         const pageSize = filters.limit || 16;
         const currentPage = filters.page || 1;
         
@@ -286,9 +279,7 @@ export async function getUnifiedProducts(filters: UnifiedFilters = {}): Promise<
         // Paginate the combined results
         const startIndex = (currentPage - 1) * pageSize;
         const paginatedProducts = allProducts.slice(startIndex, startIndex + pageSize);
-        console.timeEnd('paginateResults');
         
-        console.timeEnd('getUnifiedProducts');
         return {
           total_pages: totalPages,
           count: totalCount,
@@ -299,7 +290,6 @@ export async function getUnifiedProducts(filters: UnifiedFilters = {}): Promise<
         // Si no hay filtros de categoría, combinar y paginar directamente
         const allProducts = [...zecatProducts, ...cdoProducts];
         
-        console.time('paginateResults');
         const pageSize = filters.limit || 16;
         const currentPage = filters.page || 1;
         
@@ -310,9 +300,7 @@ export async function getUnifiedProducts(filters: UnifiedFilters = {}): Promise<
         // Paginate the combined results
         const startIndex = (currentPage - 1) * pageSize;
         const paginatedProducts = allProducts.slice(startIndex, startIndex + pageSize);
-        console.timeEnd('paginateResults');
         
-        console.timeEnd('getUnifiedProducts');
         return {
           total_pages: totalPages,
           count: totalCount,
@@ -322,15 +310,12 @@ export async function getUnifiedProducts(filters: UnifiedFilters = {}): Promise<
       }
     } catch (error) {
       // If fetching from both APIs fails, fall back to just one source
-      console.error('Error fetching from both APIs:', error);
       
       // Intentar con Zecat primero
       try {
-        console.log('Fallback: attempting to fetch from Zecat only');
         const zecatFilters = mapUnifiedToZecatFilters(limitedFilters);
         const response = await getZecatProducts(zecatFilters);
         
-        console.timeEnd('getUnifiedProducts');
         return {
           total_pages: response.total_pages,
           count: response.count,
@@ -339,14 +324,10 @@ export async function getUnifiedProducts(filters: UnifiedFilters = {}): Promise<
         };
       } catch (zecatError) {
         // Si Zecat falla, intentar con CDO
-        console.error('Zecat fallback failed:', zecatError);
-        console.log('Fallback: attempting to fetch from CDO only');
-        
         try {
           const cdoFilters = mapUnifiedToCDOFilters(limitedFilters);
           const response = await getCDOProducts(cdoFilters);
           
-          console.timeEnd('getUnifiedProducts');
           return {
             total_pages: response.total_pages || 1,
             count: response.products.length,
@@ -354,14 +335,12 @@ export async function getUnifiedProducts(filters: UnifiedFilters = {}): Promise<
             source: 'cdo'
           };
         } catch (cdoError) {
-          console.error('CDO fallback failed:', cdoError);
           // Si los dos fallbacks fallan, lanzar el error original
           throw error;
         }
       }
     }
   } catch (error) {
-    console.error('Critical error in getUnifiedProducts:', error);
     // Return empty results in case of a critical error
     return {
       total_pages: 1,
@@ -413,11 +392,9 @@ export async function getUnifiedProductById(compositeId: string): Promise<Unifie
       // If we couldn't find a product with the ID and the ID looks like a code (contains letters),
       // we'll try to search for it in the product list by code
       if (!product && !/^\d+$/.test(idStr)) {
-        console.log(`Trying to fetch CDO product with code: ${idStr}`);
         const products = await getCDOProducts({ page_size: 1000 });
         const matchingProduct = products.products.find(p => p.code === idStr);
         if (matchingProduct) {
-          console.log(`Found CDO product with code: ${idStr}`);
           return matchingProduct;
         }
       }
@@ -427,62 +404,133 @@ export async function getUnifiedProductById(compositeId: string): Promise<Unifie
     
     throw new Error(`Invalid source: ${source}. Expected "zecat" or "cdo".`);
   } catch (error) {
-    console.error(`Error fetching unified product with ID ${compositeId}:`, error);
     return null;
   }
 }
 
 /**
- * Get all categories from both APIs
+ * Get all categories from both APIs - updated to load all categories at once
  */
 export async function getUnifiedCategories(): Promise<UnifiedCategory[]> {
   try {
-    console.log('Fetching categories from Zecat and CDO APIs...');
+    // Check if cache should be disabled
+    const disableCache = shouldDisableCache();
     
-    // Using Promise.allSettled to handle potential failures in either API
+    console.log('[getUnifiedCategories] Starting to fetch categories, cache disabled:', disableCache);
+    
+    // If cache isn't disabled, try getting both categories from cache
+    if (!disableCache && typeof window !== 'undefined') {
+      try {
+        const { getStoredCategories } = await import('../local-storage');
+        const zecatCategories = getStoredCategories('zecat');
+        const cdoCategories = getStoredCategories('cdo');
+        
+        console.log('[getUnifiedCategories] Cache check - zecat categories:', zecatCategories?.length || 0);
+        console.log('[getUnifiedCategories] Cache check - cdo categories:', cdoCategories?.length || 0);
+        
+        // Only use cache if we have BOTH category sets
+        if (zecatCategories && cdoCategories && 
+            Array.isArray(zecatCategories) && Array.isArray(cdoCategories) && 
+            zecatCategories.length > 0 && cdoCategories.length > 0) {
+          
+          const zecatWithSource = zecatCategories.map((category: Family) => ({
+            ...category,
+            source: 'zecat' as const
+          }));
+          
+          const cdoWithSource = cdoCategories.map((category: CDOCategory) => ({
+            ...category,
+            source: 'cdo' as const
+          }));
+          
+          console.log('[getUnifiedCategories] Returning cached categories - total:', zecatWithSource.length + cdoWithSource.length);
+          
+          return [...zecatWithSource, ...cdoWithSource];
+        }
+      } catch (error) {
+        console.error('[getUnifiedCategories] Error accessing cached categories:', error);
+        // Error accessing localStorage, continue with API fetch
+      }
+    }
+    
+    console.log('[getUnifiedCategories] Cache not available or disabled, fetching from APIs');
+    
+    // Configure timeout for API requests
+    const timeout = 15000; // 15 seconds
+    const timeoutPromise = new Promise<null>((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout fetching categories')), timeout)
+    );
+    
+    // Fetch from both APIs concurrently
     const [zecatResult, cdoResult] = await Promise.allSettled([
-      getZecatFamilies(),
-      getCDOCategories()
+      Promise.race([getZecatFamilies(), timeoutPromise]),
+      Promise.race([getCDOCategories(), timeoutPromise])
     ]);
     
-    // Process Zecat categories (if successful)
-    const zecatCategories = zecatResult.status === 'fulfilled'
-      ? zecatResult.value.families.map(family => ({
+    console.log('[getUnifiedCategories] API results received - zecat status:', zecatResult.status);
+    console.log('[getUnifiedCategories] API results received - cdo status:', cdoResult.status);
+    
+    // Process Zecat categories
+    const zecatCategories = zecatResult.status === 'fulfilled' && zecatResult.value?.families
+      ? zecatResult.value.families.map((family: Family) => ({
           ...family,
           source: 'zecat' as const
         }))
       : [];
     
-    // Log status of Zecat API
-    if (zecatResult.status === 'fulfilled') {
-      console.log(`Successfully fetched ${zecatCategories.length} categories from Zecat`);
-    } else {
-      console.error('Failed to fetch Zecat categories:', zecatResult.reason);
-    }
-    
-    // Process CDO categories (if successful)  
-    const cdoCategoriesWithSource = cdoResult.status === 'fulfilled'
-      ? cdoResult.value.map(category => ({
+    // Process CDO categories
+    const cdoCategoriesWithSource = cdoResult.status === 'fulfilled' && cdoResult.value
+      ? cdoResult.value.map((category: CDOCategory) => ({
           ...category,
           source: 'cdo' as const
         }))
       : [];
     
-    // Log status of CDO API
-    if (cdoResult.status === 'fulfilled') {
-      console.log(`Successfully fetched ${cdoCategoriesWithSource.length} categories from CDO`);
-    } else {
-      console.error('Failed to fetch CDO categories:', cdoResult.reason);
+    console.log('[getUnifiedCategories] Processed categories - zecat count:', zecatCategories.length);
+    console.log('[getUnifiedCategories] Processed categories - cdo count:', cdoCategoriesWithSource.length);
+    
+    // Combine all categories
+    const allCategories = [...zecatCategories, ...cdoCategoriesWithSource];
+    
+    // If we have categories from both sources, cache them
+    if (zecatCategories.length > 0 && cdoCategoriesWithSource.length > 0 && 
+        !disableCache && typeof window !== 'undefined') {
+      try {
+        const { saveCategories } = await import('../local-storage');
+        saveCategories('zecat', zecatResult.status === 'fulfilled' ? (zecatResult.value?.families ?? []) : []);
+        saveCategories('cdo', cdoResult.status === 'fulfilled' ? (cdoResult.value ?? []) : []);
+        console.log('[getUnifiedCategories] Categories cached successfully');
+      } catch (error) {
+        console.error('[getUnifiedCategories] Error saving categories to cache:', error);
+        // Silently handle storage errors
+      }
     }
     
-    const allCategories = [...zecatCategories, ...cdoCategoriesWithSource];
-    console.log(`Returning ${allCategories.length} total categories`);
+    // If we have any categories, return them
+    if (allCategories.length > 0) {
+      console.log('[getUnifiedCategories] Returning combined categories - total:', allCategories.length);
+      return allCategories;
+    }
     
-    return allCategories;
+    console.warn('[getUnifiedCategories] No categories found, using fallback');
+    
+    // If all APIs failed, use fallback categories
+    return [
+      { id: '101', title: 'Escritura', source: 'zecat' as const } as Family & { source: 'zecat' },
+      { id: '161', title: 'Tecnología', source: 'zecat' as const } as Family & { source: 'zecat' },
+      { id: '131', title: 'Proximos ingresos', source: 'zecat' as const } as Family & { source: 'zecat' },
+      { id: '221', title: 'Bolsas y Mochilas', source: 'zecat' as const } as Family & { source: 'zecat' }
+    ];
   } catch (error) {
-    console.error('Error fetching unified categories:', error);
-    // Return empty categories in case of a critical error
-    return [];
+    console.error('[getUnifiedCategories] Unexpected error:', error);
+    
+    // Return fallback categories in case of error
+    return [
+      { id: '101', title: 'Escritura', source: 'zecat' as const } as Family & { source: 'zecat' },
+      { id: '161', title: 'Tecnología', source: 'zecat' as const } as Family & { source: 'zecat' },
+      { id: '131', title: 'Proximos ingresos', source: 'zecat' as const } as Family & { source: 'zecat' },
+      { id: '221', title: 'Bolsas y Mochilas', source: 'zecat' as const } as Family & { source: 'zecat' }
+    ];
   }
 }
 

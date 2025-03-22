@@ -1,5 +1,6 @@
 import { ProductGrid } from "@/components/product-grid"
 import { getUnifiedProducts, getUnifiedCategories, createCompositeId, UnifiedCategory } from "@/lib/api/unified"
+import { Family } from "@/lib/api/types"
 import { Suspense } from "react"
 import { Filter, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -14,6 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { ProductsPageSkeleton } from "@/components/skeletons/products-page-skeleton"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
+import { XCircle } from "lucide-react"
 
 export const dynamic = 'force-dynamic'; // Forzar renderizado dinámico para los filtros
 export const revalidate = 14400 // Revalidar esta página cada 4 horas
@@ -61,10 +63,10 @@ export default async function ProductsPage({
   const source = undefined; // Ya no utilizamos el filtro de fuente
   
   try {
-    console.log('Starting to fetch products and categories');
-    
-    // Fetch categories first to poder pasarlas a los componentes
+    console.log('[ProductsPage] Starting to fetch unified categories');
+    // Fetch all categories ONCE - we'll share this data
     const allCategories = await getUnifiedCategories();
+    console.log('[ProductsPage] Categories fetched successfully, count:', allCategories.length);
     
     // Fetch products and categories in parallel with loading states
     return (
@@ -90,27 +92,20 @@ export default async function ProductsPage({
                   />
                 </div>
                 
-                {/* Categorías - Suspense para carga asíncrona */}
-                <Suspense fallback={
-                  <div className="space-y-4">
-                    <Skeleton className="h-6 w-full" />
-                    <Skeleton className="h-4 w-2/3" />
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-4 w-1/2" />
-                    <Skeleton className="h-4 w-5/6" />
-                  </div>
-                }>
-                  <CategoriesSection categoryParam={categoryParam} />
-                </Suspense>
+                <Button type="submit" className="w-full">
+                  Aplicar Filtros
+                </Button>
+                
+                {/* Pass the already-fetched categories directly to the component */}
+                <CategoriesSection 
+                  categoryParam={categoryParam} 
+                  allCategories={allCategories} 
+                />
                 
                 {/* Mantener otros parámetros existentes que no estén controlados por inputs visibles */}
                 {page > 1 && <input type="hidden" name="page" value={page} />}
                 {limit !== 16 && <input type="hidden" name="limit" value={limit} />}
                 {stockParam === '0' && <input type="hidden" name="stock" value="0" />}
-                
-                <Button type="submit" className="w-full">
-                  Aplicar Filtros
-                </Button>
               </div>
             </form>
           </div>
@@ -138,19 +133,24 @@ export default async function ProductsPage({
       </div>
     )
   } catch (error) {
-    console.error('Error in products page:', error);
+    console.error('Error loading products page:', error);
     
-    // Fallback UI for errors
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center py-12">
-          <h1 className="text-2xl font-bold mb-4">No se pudieron cargar los productos</h1>
+      <div className="container mx-auto px-4 py-12">
+        <div className="max-w-md mx-auto text-center bg-background border rounded-lg p-8 shadow-sm">
+          <XCircle className="h-12 w-12 mx-auto text-destructive mb-4" />
+          <h1 className="text-xl font-bold mb-2">Error al cargar productos</h1>
           <p className="text-muted-foreground mb-6">
-            Lo sentimos, hubo un problema al cargar los productos. Por favor, inténtalo de nuevo más tarde.
+            No se pudieron cargar los productos en este momento. Por favor intenta nuevamente más tarde.
           </p>
-          <a href="/products">
-            <Button>Reintentar</Button>
-          </a>
+          <div className="flex justify-center gap-4">
+            <a href="/">
+              <Button variant="outline">Volver al inicio</Button>
+            </a>
+            <a href="/products">
+              <Button>Reintentar</Button>
+            </a>
+          </div>
         </div>
       </div>
     );
@@ -158,30 +158,78 @@ export default async function ProductsPage({
 }
 
 // Componente separado para categorías - carga independiente
-async function CategoriesSection({ categoryParam }: { categoryParam?: string | string[] }) {
+async function CategoriesSection({ categoryParam, allCategories }: { categoryParam?: string | string[], allCategories: UnifiedCategory[] }) {
   try {
-    // Intento obtener todas las categorías, pero no detengo la aplicación si falla
-    const allCategories = await getUnifiedCategories();
+    // Separar categorías por fuente
+    const zecatCategories = allCategories.filter(cat => cat.source === 'zecat');
+    const cdoCategories = allCategories.filter(cat => cat.source === 'cdo');
     
-    // Ya no verificamos qué categorías tienen productos porque es muy costoso
-    // Asumimos que todas las categorías que vienen de la API tienen productos
-    const categoriesWithProductsSorted = allCategories
-      .sort((a, b) => {
-        const nameA = a.source === 'zecat' 
-          ? ((a as any).title || (a as any).description || 'Categoría') 
-          : ((a as any).name || 'Categoría');
-        const nameB = b.source === 'zecat' 
-          ? ((b as any).title || (b as any).description || 'Categoría') 
-          : ((b as any).name || 'Categoría');
-        return nameA.localeCompare(nameB);
+    // Crear Sets para categorías con productos
+    const zecatCategoriesWithProducts = new Set<string>();
+    const cdoCategoriesWithProducts = new Set<string>();
+    
+    // 1. Verificar categorías Zecat con productos
+    console.log('[CategoriesSection] Verificando categorías Zecat con productos...');
+    const { getProducts } = await import('@/lib/api/zecat');
+    const zecatProductsResponse = await getProducts({ limit: 100 });
+    
+    if (zecatProductsResponse?.generic_products) {
+      zecatProductsResponse.generic_products.forEach(product => {
+        if (product.families) {
+          product.families.forEach(family => {
+            zecatCategoriesWithProducts.add(family.id.toString());
+          });
+        }
       });
+    }
     
-    if (categoriesWithProductsSorted.length === 0) {
+    console.log('[CategoriesSection] Encontradas', zecatCategoriesWithProducts.size, 'categorías Zecat con productos');
+    
+    // 2. Verificar categorías CDO con productos
+    console.log('[CategoriesSection] Verificando categorías CDO con productos...');
+    const { getCDOProducts } = await import('@/lib/api/cdo');
+    const cdoProductsResponse = await getCDOProducts({ page_size: 100 });
+    
+    if (Array.isArray(cdoProductsResponse.products)) {
+      cdoProductsResponse.products.forEach(product => {
+        if (product.categories) {
+          product.categories.forEach(category => {
+            cdoCategoriesWithProducts.add(category.id.toString());
+          });
+        }
+      });
+    }
+    
+    console.log('[CategoriesSection] Encontradas', cdoCategoriesWithProducts.size, 'categorías CDO con productos');
+    
+    // Filtrar categorías para mostrar solo las que tienen productos
+    const filteredCategories = [
+      ...zecatCategories.filter(cat => zecatCategoriesWithProducts.has(cat.id.toString())),
+      ...cdoCategories.filter(cat => cdoCategoriesWithProducts.has(cat.id.toString()))
+    ];
+    
+    console.log('[CategoriesSection] Total de categorías filtradas:', filteredCategories.length);
+    
+    // Function to get category name
+    const getCategoryName = (category: UnifiedCategory) => {
+      return category.source === 'zecat' 
+        ? ((category as any).title || (category as any).description || 'Categoría') 
+        : ((category as any).name || 'Categoría');
+    };
+    
+    // Sort all categories alphabetically, without separating by source
+    const sortedCategories = filteredCategories.sort((a, b) => {
+      const nameA = getCategoryName(a);
+      const nameB = getCategoryName(b);
+      return nameA.localeCompare(nameB);
+    });
+    
+    if (sortedCategories.length === 0) {
       console.log('No hay categorías disponibles');
       return null;
     }
     
-    // Convertir categoryParam a array para manejar casos múltiples
+    // Convert categoryParam to array to handle multiple cases
     const selectedCategories = Array.isArray(categoryParam) 
       ? categoryParam 
       : categoryParam ? [categoryParam] : [];
@@ -203,13 +251,9 @@ async function CategoriesSection({ categoryParam }: { categoryParam?: string | s
                 <p className="font-bold mb-1">Categorías seleccionadas:</p>
                 <div className="flex flex-wrap gap-1 mt-1">
                   {selectedCategories.map(catId => {
-                    // Encontrar la categoría correspondiente para mostrar su nombre
-                    const category = allCategories.find(c => c.id.toString() === catId);
-                    const categoryName = category 
-                      ? (category.source === 'zecat' 
-                        ? ((category as any).title || (category as any).description || 'Categoría') 
-                        : ((category as any).name || 'Categoría'))
-                      : catId;
+                    // Find the corresponding category to display its name
+                    const category = sortedCategories.find(c => c.id.toString() === catId);
+                    const categoryName = category ? getCategoryName(category) : catId;
                     
                     return (
                       <span key={catId} className="px-2 py-1 bg-muted rounded-full text-xs">
@@ -220,12 +264,12 @@ async function CategoriesSection({ categoryParam }: { categoryParam?: string | s
                 </div>
               </div>
             )}
-            <div className="space-y-4 pt-1">
-              {categoriesWithProductsSorted.map((category) => {
+            
+            {/* All categories displayed together */}
+            <div className="space-y-2">
+              {sortedCategories.map((category) => {
                 const categoryId = category.id.toString();
-                const categoryName = category.source === 'zecat' 
-                  ? ((category as any).title || (category as any).description || 'Categoría') 
-                  : ((category as any).name || 'Categoría');
+                const categoryName = getCategoryName(category);
                 
                 return (
                   <div key={`${category.source}-${categoryId}`} className="flex items-center space-x-2">
@@ -282,7 +326,6 @@ async function ProductListingWithPagination({
   search?: string,
   allCategories: UnifiedCategory[]
 }) {
-  console.time('fetchProducts');
   const productsResponse = await getUnifiedProducts({
     page,
     limit,
@@ -291,9 +334,7 @@ async function ProductListingWithPagination({
     search,
     source: undefined
   });
-  console.timeEnd('fetchProducts');
   
-  console.time('transformProducts');
   // Transform API products to match our product structure - optimizado para procesamiento más rápido
   const products = productsResponse.products.map(product => {
     if (product.source === 'zecat') {
@@ -332,7 +373,6 @@ async function ProductListingWithPagination({
       };
     }
   });
-  console.timeEnd('transformProducts');
   
   // Get total pages and product count
   const totalPages = productsResponse.total_pages;

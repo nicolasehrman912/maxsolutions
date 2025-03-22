@@ -34,12 +34,31 @@ export function PurchaseStepsModal() {
   useEffect(() => {
     setIsMounted(true)
     
-    const timer = setTimeout(() => {
-      setIsOpen(true)
-    }, 1000)
-    
-    return () => clearTimeout(timer)
+    // Verificar en localStorage si el usuario ya vio el popup
+    // Solo ejecutar en el lado del cliente
+    if (typeof window !== 'undefined') {
+      const hasSeenModal = localStorage.getItem('hasSeenPurchaseGuide')
+      
+      // Mostrar el modal solo si el usuario no lo ha visto antes
+      if (!hasSeenModal) {
+        const timer = setTimeout(() => {
+          setIsOpen(true)
+        }, 1000)
+        
+        return () => clearTimeout(timer)
+      }
+    }
   }, [])
+  
+  // Función para cerrar el modal y guardar en localStorage
+  const handleClose = () => {
+    // Guardar en localStorage que el usuario ya vio el popup
+    // Solo ejecutar en el lado del cliente
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('hasSeenPurchaseGuide', 'true')
+    }
+    setIsOpen(false)
+  }
   
   // Función para manejar el gesto de deslizamiento
   useEffect(() => {
@@ -59,7 +78,7 @@ export function PurchaseStepsModal() {
       // Si estamos deslizando hacia abajo y estamos en la parte superior del contenido
       if (diff > 50 && dialogRef.current && dialogRef.current.scrollTop <= 0) {
         e.preventDefault()
-        setIsOpen(false)
+        handleClose() // Usar handleClose para guardar en localStorage
       }
     }
     
@@ -76,7 +95,7 @@ export function PurchaseStepsModal() {
   if (!isMounted) return null;
   
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent 
         ref={dialogRef}
         className={`
@@ -93,7 +112,7 @@ export function PurchaseStepsModal() {
         )}
         
         {/* Botón de cerrar personalizado más grande y visible */}
-        <DialogClose className="absolute right-3 top-3 sm:right-4 sm:top-4 rounded-full bg-muted p-2 w-8 h-8 flex items-center justify-center hover:bg-muted-foreground/20 z-50">
+        <DialogClose className="absolute right-3 top-3 sm:right-4 sm:top-4 rounded-full bg-muted p-2 w-8 h-8 flex items-center justify-center hover:bg-muted-foreground/20 z-50" onClick={handleClose}>
           <X className="h-5 w-5" />
           <span className="sr-only">Cerrar</span>
         </DialogClose>
@@ -158,7 +177,7 @@ export function PurchaseStepsModal() {
         </div>
         
         <DialogFooter className="mt-2 sm:mt-4">
-          <Button onClick={() => setIsOpen(false)} className="w-full py-5 text-base sm:py-6">
+          <Button onClick={handleClose} className="w-full py-5 text-base sm:py-6">
             ¡Entendido, vamos a comprar!
           </Button>
         </DialogFooter>
