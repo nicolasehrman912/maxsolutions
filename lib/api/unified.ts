@@ -382,112 +382,111 @@ export async function getUnifiedProductById(compositeId: string): Promise<Unifie
 }
 
 /**
- * Get all categories from both APIs - updated to load all categories at once
+ * Get all categories from both APIs - optimized with enhanced caching
  */
 export async function getUnifiedCategories(): Promise<UnifiedCategory[]> {
+  const CACHE_KEY = 'unified_categories';
+  const CACHE_TIME = 12 * 60 * 60 * 1000; // 12 horas
+  
   try {
     // Check if cache should be disabled
     const disableCache = shouldDisableCache();
     
-    console.log('[getUnifiedCategories] Starting to fetch categories, cache disabled:', disableCache);
-    
-    // If cache isn't disabled, try getting both categories from cache
+    // Primera estrategia: Verificar caché en localStorage si estamos en el cliente
     if (!disableCache && typeof window !== 'undefined') {
       try {
-        const { getStoredCategories } = await import('../local-storage');
-        const zecatCategories = getStoredCategories('zecat');
-        const cdoCategories = getStoredCategories('cdo');
-        
-        console.log('[getUnifiedCategories] Cache check - zecat categories:', zecatCategories?.length || 0);
-        console.log('[getUnifiedCategories] Cache check - cdo categories:', cdoCategories?.length || 0);
-        
-        // Only use cache if we have BOTH category sets
-        if (zecatCategories && cdoCategories && 
-            Array.isArray(zecatCategories) && Array.isArray(cdoCategories) && 
-            zecatCategories.length > 0 && cdoCategories.length > 0) {
-          
-          const zecatWithSource = zecatCategories.map((category: Family) => ({
-            ...category,
-            source: 'zecat' as const
-          }));
-          
-          const cdoWithSource = cdoCategories.map((category: CDOCategory) => ({
-            ...category,
-            source: 'cdo' as const
-          }));
-          
-          console.log('[getUnifiedCategories] Returning cached categories - total:', zecatWithSource.length + cdoWithSource.length);
-          
-          return [...zecatWithSource, ...cdoWithSource];
+        const cachedData = localStorage.getItem(CACHE_KEY);
+        if (cachedData) {
+          const parsedData = JSON.parse(cachedData);
+          // Si el caché tiene menos de 12 horas, usarlo directamente
+          if (Date.now() - parsedData.timestamp < CACHE_TIME && 
+              parsedData.data && Array.isArray(parsedData.data) && 
+              parsedData.data.length > 0) {
+            return parsedData.data;
+          }
         }
-      } catch (error) {
-        console.error('[getUnifiedCategories] Error accessing cached categories:', error);
-        // Error accessing localStorage, continue with API fetch
+      } catch (e) {
+        console.error('Error accessing cached categories:', e);
       }
     }
     
-    console.log('[getUnifiedCategories] Cache not available or disabled, fetching from APIs');
+    // Segunda estrategia: Solicitar categorías en paralelo con timeout reducido
+    const TIMEOUT_MS = 3500; // 3.5 segundos máximo para no bloquear la UI
     
-    // Configure timeout for API requests
-    const timeout = 15000; // 15 seconds
-    const timeoutPromise = new Promise<null>((_, reject) =>
-      setTimeout(() => reject(new Error('Timeout fetching categories')), timeout)
-    );
+    // Crear promesas con timeout para ambas fuentes
+    const fetchWithTimeout = async (fetcher: () => Promise<any>, source: string) => {
+      try {
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error(`Timeout fetching ${source} categories`)), TIMEOUT_MS)
+        );
+        
+        return await Promise.race([fetcher(), timeoutPromise]);
+      } catch (error) {
+        console.warn(`Error fetching ${source} categories:`, error);
+        return null;
+      }
+    };
     
-    // Fetch from both APIs concurrently
-    const [zecatResult, cdoResult] = await Promise.allSettled([
-      Promise.race([getZecatFamilies(), timeoutPromise]),
-      Promise.race([getCDOCategories(), timeoutPromise])
+    // Ejecutar solicitudes en paralelo
+    const [zecatFamiliesData, cdoCategoriesData] = await Promise.all([
+      fetchWithTimeout(() => getZecatFamilies(), 'zecat'),
+      fetchWithTimeout(() => getCDOCategories(), 'cdo')
     ]);
     
-    console.log('[getUnifiedCategories] API results received - zecat status:', zecatResult.status);
-    console.log('[getUnifiedCategories] API results received - cdo status:', cdoResult.status);
-    
-    // Process Zecat categories
-    const zecatCategories = zecatResult.status === 'fulfilled' && zecatResult.value?.families
-      ? zecatResult.value.families.map((family: Family) => ({
+    // Procesar categorías de Zecat
+    const zecatCategories = zecatFamiliesData?.families 
+      ? zecatFamiliesData.families.map((family: Family) => ({
           ...family,
           source: 'zecat' as const
         }))
       : [];
     
-    // Process CDO categories
-    const cdoCategoriesWithSource = cdoResult.status === 'fulfilled' && cdoResult.value
-      ? cdoResult.value.map((category: CDOCategory) => ({
+    // Procesar categorías de CDO
+    const cdoCategories = cdoCategoriesData
+      ? cdoCategoriesData.map((category: CDOCategory) => ({
           ...category,
           source: 'cdo' as const
         }))
       : [];
     
-    console.log('[getUnifiedCategories] Processed categories - zecat count:', zecatCategories.length);
-    console.log('[getUnifiedCategories] Processed categories - cdo count:', cdoCategoriesWithSource.length);
+    // Combinar todas las categorías
+    const allCategories = [...zecatCategories, ...cdoCategories];
     
-    // Combine all categories
-    const allCategories = [...zecatCategories, ...cdoCategoriesWithSource];
-    
-    // If we have categories from both sources, cache them
-    if (zecatCategories.length > 0 && cdoCategoriesWithSource.length > 0 && 
-        !disableCache && typeof window !== 'undefined') {
+    // Guardar en caché si tenemos categorías y estamos en el cliente
+    if (allCategories.length > 0 && !disableCache && typeof window !== 'undefined') {
       try {
-        const { saveCategories } = await import('../local-storage');
-        saveCategories('zecat', zecatResult.status === 'fulfilled' ? (zecatResult.value?.families ?? []) : []);
-        saveCategories('cdo', cdoResult.status === 'fulfilled' ? (cdoResult.value ?? []) : []);
-        console.log('[getUnifiedCategories] Categories cached successfully');
-      } catch (error) {
-        console.error('[getUnifiedCategories] Error saving categories to cache:', error);
-        // Silently handle storage errors
+        localStorage.setItem(CACHE_KEY, JSON.stringify({
+          data: allCategories,
+          timestamp: Date.now()
+        }));
+      } catch (e) {
+        console.error('Error saving categories to cache:', e);
       }
     }
     
-    // If we have any categories, return them
+    // Si tenemos categorías, retornarlas
     if (allCategories.length > 0) {
-      console.log('[getUnifiedCategories] Returning combined categories - total:', allCategories.length);
       return allCategories;
     }
     
-    console.warn('[getUnifiedCategories] No categories found, using fallback');
+    // Tercera estrategia: Si las solicitudes paralelas fallaron, intentar recuperar del caché
+    // incluso si está vencido
+    if (typeof window !== 'undefined') {
+      try {
+        const cachedData = localStorage.getItem(CACHE_KEY);
+        if (cachedData) {
+          const parsedData = JSON.parse(cachedData);
+          if (parsedData.data && Array.isArray(parsedData.data) && parsedData.data.length > 0) {
+            console.log('Using expired cache for categories as fallback');
+            return parsedData.data;
+          }
+        }
+      } catch (e) {
+        console.error('Error accessing fallback cache for categories:', e);
+      }
+    }
     
-    // If all APIs failed, use fallback categories
+    // Cuarta estrategia: Fallback - categorías predefinidas
     return [
       { id: '101', title: 'Escritura', source: 'zecat' as const } as Family & { source: 'zecat' },
       { id: '161', title: 'Tecnología', source: 'zecat' as const } as Family & { source: 'zecat' },
@@ -495,9 +494,9 @@ export async function getUnifiedCategories(): Promise<UnifiedCategory[]> {
       { id: '221', title: 'Bolsas y Mochilas', source: 'zecat' as const } as Family & { source: 'zecat' }
     ];
   } catch (error) {
-    console.error('[getUnifiedCategories] Unexpected error:', error);
+    console.error('Error in getUnifiedCategories:', error);
     
-    // Return fallback categories in case of error
+    // Fallback - categorías predefinidas
     return [
       { id: '101', title: 'Escritura', source: 'zecat' as const } as Family & { source: 'zecat' },
       { id: '161', title: 'Tecnología', source: 'zecat' as const } as Family & { source: 'zecat' },

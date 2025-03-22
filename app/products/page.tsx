@@ -63,12 +63,7 @@ export default async function ProductsPage({
   const source = undefined; // Ya no utilizamos el filtro de fuente
   
   try {
-    console.log('[ProductsPage] Starting to fetch unified categories');
-    // Fetch all categories ONCE - we'll share this data
-    const allCategories = await getUnifiedCategories();
-    console.log('[ProductsPage] Categories fetched successfully, count:', allCategories.length);
-    
-    // Fetch products and categories in parallel with loading states
+    // No esperamos a que las categorías se carguen antes de mostrar la página
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row gap-8">
@@ -96,11 +91,24 @@ export default async function ProductsPage({
                   Aplicar Filtros
                 </Button>
                 
-                {/* Pass the already-fetched categories directly to the component */}
-                <CategoriesSection 
-                  categoryParam={categoryParam} 
-                  allCategories={allCategories} 
-                />
+                {/* Envolver CategoriesSection en Suspense para no bloquear la página */}
+                <Suspense fallback={
+                  <div className="space-y-2 animate-pulse">
+                    <div className="h-6 bg-gray-200 rounded w-2/3"></div>
+                    <div className="space-y-2">
+                      {[...Array(5)].map((_, i) => (
+                        <div key={i} className="flex items-center space-x-2">
+                          <div className="h-4 w-4 bg-gray-200 rounded"></div>
+                          <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                }>
+                  <CategoriesSection 
+                    categoryParam={categoryParam}
+                  />
+                </Suspense>
                 
                 {/* Mantener otros parámetros existentes que no estén controlados por inputs visibles */}
                 {page > 1 && <input type="hidden" name="page" value={page} />}
@@ -125,7 +133,6 @@ export default async function ProductsPage({
                 categoryParam={categoryParam}
                 stock={stock} 
                 search={search}
-                allCategories={allCategories}
               />
             </Suspense>
           </div>
@@ -158,81 +165,33 @@ export default async function ProductsPage({
 }
 
 // Componente separado para categorías - carga independiente
-async function CategoriesSection({ categoryParam, allCategories }: { categoryParam?: string | string[], allCategories: UnifiedCategory[] }) {
+async function CategoriesSection({ categoryParam }: { categoryParam?: string | string[] }) {
   try {
-    // Separar categorías por fuente
-    const zecatCategories = allCategories.filter(cat => cat.source === 'zecat');
-    const cdoCategories = allCategories.filter(cat => cat.source === 'cdo');
+    // Obtener categorías unificadas - ahora optimizado con mejor caché
+    const allCategories = await getUnifiedCategories();
     
-    // Crear Sets para categorías con productos
-    const zecatCategoriesWithProducts = new Set<string>();
-    const cdoCategoriesWithProducts = new Set<string>();
+    // Convertir categoryParam a array para manejar múltiples casos
+    const selectedCategories = Array.isArray(categoryParam) 
+      ? categoryParam 
+      : categoryParam ? [categoryParam] : [];
     
-    // 1. Verificar categorías Zecat con productos
-    console.log('[CategoriesSection] Verificando categorías Zecat con productos...');
-    const { getProducts } = await import('@/lib/api/zecat');
-    const zecatProductsResponse = await getProducts({ limit: 100 });
-    
-    if (zecatProductsResponse?.generic_products) {
-      zecatProductsResponse.generic_products.forEach(product => {
-        if (product.families) {
-          product.families.forEach(family => {
-            zecatCategoriesWithProducts.add(family.id.toString());
-          });
-        }
-      });
-    }
-    
-    console.log('[CategoriesSection] Encontradas', zecatCategoriesWithProducts.size, 'categorías Zecat con productos');
-    
-    // 2. Verificar categorías CDO con productos
-    console.log('[CategoriesSection] Verificando categorías CDO con productos...');
-    const { getCDOProducts } = await import('@/lib/api/cdo');
-    const cdoProductsResponse = await getCDOProducts({ page_size: 100 });
-    
-    if (Array.isArray(cdoProductsResponse.products)) {
-      cdoProductsResponse.products.forEach(product => {
-        if (product.categories) {
-          product.categories.forEach(category => {
-            cdoCategoriesWithProducts.add(category.id.toString());
-          });
-        }
-      });
-    }
-    
-    console.log('[CategoriesSection] Encontradas', cdoCategoriesWithProducts.size, 'categorías CDO con productos');
-    
-    // Filtrar categorías para mostrar solo las que tienen productos
-    const filteredCategories = [
-      ...zecatCategories.filter(cat => zecatCategoriesWithProducts.has(cat.id.toString())),
-      ...cdoCategories.filter(cat => cdoCategoriesWithProducts.has(cat.id.toString()))
-    ];
-    
-    console.log('[CategoriesSection] Total de categorías filtradas:', filteredCategories.length);
-    
-    // Function to get category name
+    // Function to get category name consistently
     const getCategoryName = (category: UnifiedCategory) => {
       return category.source === 'zecat' 
         ? ((category as any).title || (category as any).description || 'Categoría') 
         : ((category as any).name || 'Categoría');
     };
     
-    // Sort all categories alphabetically, without separating by source
-    const sortedCategories = filteredCategories.sort((a, b) => {
+    // Ordenar categorías alfabéticamente para mejor usabilidad
+    const sortedCategories = [...allCategories].sort((a, b) => {
       const nameA = getCategoryName(a);
       const nameB = getCategoryName(b);
       return nameA.localeCompare(nameB);
     });
     
     if (sortedCategories.length === 0) {
-      console.log('No hay categorías disponibles');
       return null;
     }
-    
-    // Convert categoryParam to array to handle multiple cases
-    const selectedCategories = Array.isArray(categoryParam) 
-      ? categoryParam 
-      : categoryParam ? [categoryParam] : [];
     
     return (
       <Accordion type="single" collapsible className="w-full" defaultValue={selectedCategories.length > 0 ? "all-categories" : undefined}>
@@ -315,16 +274,14 @@ async function ProductListingWithPagination({
   categories,
   categoryParam,
   stock,
-  search,
-  allCategories
+  search
 }: { 
   page: number, 
   limit: number,
   categories?: string[],
   categoryParam?: string | string[],
   stock?: number,
-  search?: string,
-  allCategories: UnifiedCategory[]
+  search?: string
 }) {
   // Optimización: Configurar un timeout para evitar esperas infinitas
   const MAX_TIMEOUT = 5000; // 5 segundos máximo de espera
