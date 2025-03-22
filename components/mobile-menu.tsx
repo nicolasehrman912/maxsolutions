@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Phone, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -13,10 +14,30 @@ interface MobileMenuProps {
   pathname: string;
 }
 
+// Cliente component for search form
+function MobileSearchForm({ onClose }: { onClose: () => void }) {
+  const searchParams = useSearchParams();
+  
+  return (
+    <form action="/products" method="get" onSubmit={onClose}>
+      <div className="relative">
+        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+        <Input
+          type="search"
+          name="search"
+          placeholder="Buscar productos..."
+          defaultValue={searchParams?.get('search') || ''}
+          className="w-full pl-9 pr-4"
+          autoComplete="off"
+        />
+        <input type="hidden" name="page" value="1" />
+      </div>
+    </form>
+  );
+}
+
 export function MobileMenu({ isOpen, onClose, categories, pathname }: MobileMenuProps) {
   if (!isOpen) return null;
-  
-  const searchParams = useSearchParams();
   
   // Format WhatsApp message
   const message = encodeURIComponent(`Hola, me gustaría solicitar información sobre sus productos.`);
@@ -26,20 +47,18 @@ export function MobileMenu({ isOpen, onClose, categories, pathname }: MobileMenu
     <div className="md:hidden border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-4 py-4 space-y-4">
         {/* Search Bar */}
-        <form action="/products" method="get" onSubmit={onClose}>
+        <Suspense fallback={
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              type="search"
-              name="search"
-              placeholder="Buscar productos..."
-              defaultValue={searchParams?.get('search') || ''}
+              disabled
+              placeholder="Cargando..."
               className="w-full pl-9 pr-4"
-              autoComplete="off"
             />
-            <input type="hidden" name="page" value="1" />
           </div>
-        </form>
+        }>
+          <MobileSearchForm onClose={onClose} />
+        </Suspense>
         
         <nav className="flex flex-col space-y-4">
           <Link 

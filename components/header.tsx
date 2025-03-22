@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Phone, Search, Menu, X } from "lucide-react"
-import { useState } from "react"
+import { useState, Suspense } from "react"
 import Image from "next/image"
 import dynamic from 'next/dynamic'
 import { Input } from "@/components/ui/input"
@@ -15,9 +15,30 @@ const MobileMenu = dynamic(
   { ssr: false } // Never render on server
 )
 
+// Client component for the search form
+function SearchForm() {
+  const searchParams = useSearchParams()
+  
+  return (
+    <form action="/products" method="get" className="flex-1">
+      <div className="relative">
+        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+        <Input
+          type="search"
+          name="search"
+          placeholder="Buscar productos..."
+          defaultValue={searchParams?.get('search') || ''}
+          className="w-full pl-9 pr-4"
+          autoComplete="off"
+        />
+        <input type="hidden" name="page" value="1" />
+      </div>
+    </form>
+  )
+}
+
 export function Header() {
   const pathname = usePathname()
-  const searchParams = useSearchParams()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   
   // Format WhatsApp message
@@ -44,20 +65,18 @@ export function Header() {
               Productos
             </Link>
             
-            <form action="/products" method="get" className="flex-1">
-              <div className="relative">
+            <Suspense fallback={
+              <div className="flex-1 relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
-                  type="search"
-                  name="search"
-                  placeholder="Buscar productos..."
-                  defaultValue={searchParams?.get('search') || ''}
+                  disabled
+                  placeholder="Cargando..."
                   className="w-full pl-9 pr-4"
-                  autoComplete="off"
                 />
-                <input type="hidden" name="page" value="1" />
               </div>
-            </form>
+            }>
+              <SearchForm />
+            </Suspense>
           </div>
           
           {/* Right section with contact button */}
