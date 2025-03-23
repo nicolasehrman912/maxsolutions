@@ -53,7 +53,6 @@ export const BANNERS: Banner[] = [
     desktopImageUrl: 'https://i.im.ge/2025/03/22/pUzrW8.Banner-Web-Nuevos-Productos-Pampero-1580x700px.webp',
     mobileImageUrl: 'https://i.im.ge/2025/03/22/pUzXO9.Banner-Mobile-Nuevos-Productos-Pampero-400x480px.webp',
     linkUrl: '/products',
-    title: 'Nuevos Productos', // Opcional: título que aparece sobre el banner
     priority: 0, // Menor número = mayor prioridad
     active: true // true = se muestra, false = no se muestra
   },
