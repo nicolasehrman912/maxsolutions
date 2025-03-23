@@ -8,6 +8,7 @@ import { useState, Suspense } from "react"
 import Image from "next/image"
 import dynamic from 'next/dynamic'
 import { Input } from "@/components/ui/input"
+import { generarUrlWhatsApp } from "@/MODIFICAR"
 
 // Create a client-only mobile menu component
 const MobileMenu = dynamic(
@@ -41,9 +42,8 @@ export function Header() {
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   
-  // Format WhatsApp message
-  const message = encodeURIComponent(`Hola, me gustaría solicitar información sobre sus productos.`);
-  const whatsappUrl = `https://wa.me/5491124779637?text=${message}`; // Formato correcto con código de país
+  // Usar la función generarUrlWhatsApp para obtener la URL de WhatsApp
+  const whatsappUrl = generarUrlWhatsApp('general')
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">

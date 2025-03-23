@@ -16,6 +16,7 @@ import { ProductsPageSkeleton } from "@/components/skeletons/products-page-skele
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import { XCircle } from "lucide-react"
+import { filtrarCategoriasOcultas } from "@/MODIFICAR"
 
 export const dynamic = 'force-dynamic'; // Forzar renderizado dinámico para los filtros
 export const revalidate = 14400 // Revalidar esta página cada 4 horas
@@ -170,6 +171,9 @@ async function CategoriesSection({ categoryParam }: { categoryParam?: string | s
     // Obtener categorías unificadas - ahora optimizado con mejor caché
     const allCategories = await getUnifiedCategories();
     
+    // Filtrar las categorías ocultas
+    const categoriasVisibles = filtrarCategoriasOcultas(allCategories);
+    
     // Convertir categoryParam a array para manejar múltiples casos
     const selectedCategories = Array.isArray(categoryParam) 
       ? categoryParam 
@@ -183,7 +187,7 @@ async function CategoriesSection({ categoryParam }: { categoryParam?: string | s
     };
     
     // Ordenar categorías alfabéticamente para mejor usabilidad
-    const sortedCategories = [...allCategories].sort((a, b) => {
+    const sortedCategories = [...categoriasVisibles].sort((a, b) => {
       const nameA = getCategoryName(a);
       const nameB = getCategoryName(b);
       return nameA.localeCompare(nameB);

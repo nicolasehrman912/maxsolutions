@@ -12,6 +12,7 @@ import {
   DialogClose
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { generarUrlWhatsApp } from "@/MODIFICAR"
 
 export function PurchaseStepsModal() {
   const [isOpen, setIsOpen] = useState(false)
@@ -160,6 +161,14 @@ export function PurchaseStepsModal() {
               <p className="text-muted-foreground text-sm sm:text-base">
                 Haz clic en el botón de WhatsApp en la página del producto para iniciar una conversación directa con nuestro equipo de ventas.
               </p>
+              <a 
+                href={generarUrlWhatsApp('general')} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="inline-flex items-center mt-2 text-sm text-primary hover:underline"
+              >
+                O contáctanos ahora mismo
+              </a>
             </div>
           </div>
           

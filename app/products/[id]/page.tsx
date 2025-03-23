@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge, badgeVariants } from "@/components/ui/badge"
 import { Phone } from "lucide-react"
 import { GenericProduct, CDOProduct } from "@/lib/api/types"
+import { generarUrlWhatsApp } from "@/MODIFICAR"
 
 // Use a number for revalidate
 export const revalidate = 3600 // Revalidate this page every hour
@@ -31,11 +32,11 @@ export default async function ProductPage({ params }: { params: { id: string } }
     
     console.log(`Successfully loaded product: ${product.name} (${product.source})`);
     
-    // Format WhatsApp message for product inquiry
-    const productName = encodeURIComponent(product.name || 'Producto');
-    const productId = encodeURIComponent(paramsData.id || '');
-    const message = encodeURIComponent(`Hola, estoy interesado en el producto "${product.name || 'Producto'}" (ID: ${paramsData.id || 'N/A'}). ¿Podrías proporcionarme más información?`);
-    const whatsappUrl = `https://wa.me/5491124779637?text=${message}`; // Formato correcto con código de país
+    // Generar URL de WhatsApp usando la función centralizada
+    const whatsappUrl = generarUrlWhatsApp('producto', {
+      nombre: product.name || 'Producto',
+      id: paramsData.id || 'N/A'
+    });
 
     // Extract source and raw ID from composite ID
     const { source } = parseCompositeId(paramsData.id);

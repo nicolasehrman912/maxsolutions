@@ -6,6 +6,7 @@ import { Phone, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
+import { generarUrlWhatsApp } from "@/MODIFICAR";
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -39,9 +40,8 @@ function MobileSearchForm({ onClose }: { onClose: () => void }) {
 export function MobileMenu({ isOpen, onClose, categories, pathname }: MobileMenuProps) {
   if (!isOpen) return null;
   
-  // Format WhatsApp message
-  const message = encodeURIComponent(`Hola, me gustaría solicitar información sobre sus productos.`);
-  const whatsappUrl = `https://wa.me/5491124779637?text=${message}`; // Formato correcto con código de país
+  // Usar la función generarUrlWhatsApp para obtener la URL de WhatsApp
+  const whatsappUrl = generarUrlWhatsApp('general');
   
   return (
     <div className="md:hidden border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">

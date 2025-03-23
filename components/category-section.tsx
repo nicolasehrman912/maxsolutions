@@ -1,21 +1,33 @@
 'use client';
 
+import Image from "next/image"
 import Link from "next/link"
+import { FEATURED_CATEGORIES } from "@/MODIFICAR"
+import { useEffect, useState } from "react"
 // Remove dynamic imports
-// import { useEffect, useState } from "react"
 // import { getCDOCategories } from "@/lib/api/cdo"
 // import { getStoredCategories } from "@/lib/local-storage"
 
-// Static categories
-const FEATURED_CATEGORIES = [
-  { id: 101, name: 'Escritura' },
-  { id: 161, name: 'Tecnología' },
-  { id: 131, name: 'Proximos ingresos' },
-  { id: 221, name: 'Bolsas, Bolsos, Maletines y Mochilas' }
-];
-
 export function CategorySection() {
-  // No state or effects needed for static content
+  // Estado para detectar si estamos en un dispositivo móvil
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detectar si estamos en móvil cuando el componente se monta y si cambia el tamaño de ventana
+  useEffect(() => {
+    const checkIfMobile = () => {
+      setIsMobile(window.innerWidth < 768); // Considerar móvil en menos de 768px
+    };
+    
+    // Verificar inicialmente
+    checkIfMobile();
+    
+    // Agregar listener para cambios de tamaño
+    window.addEventListener('resize', checkIfMobile);
+    
+    // Limpiar listener al desmontar
+    return () => window.removeEventListener('resize', checkIfMobile);
+  }, []);
+
   return (
     <section className="space-y-6">
       <div className="flex flex-col items-center text-center space-y-2">
@@ -31,14 +43,28 @@ export function CategorySection() {
             href={`/products?search=&category=${category.id}`}
             className="group flex flex-col overflow-hidden rounded-lg border hover:shadow-md transition-all"
           >
-            <div className="aspect-[4/3] w-full bg-muted relative flex items-center justify-center p-4">
-              {/* CDO no tiene iconos, mostrar un emoji relacionado */}
-              <div className="text-4xl">
-                {category.id === 101 ? "✏️" : 
-                 category.id === 161 ? "💻" : 
-                 category.id === 131 ? "📎" : 
-                 category.id === 221 ? "👜" : "🎁"}
-              </div>
+            <div className="aspect-[4/3] w-full bg-muted relative">
+              {/* Imagen para móvil (se muestra solo cuando isMobile es true) */}
+              {isMobile && (
+                <Image
+                  src={category.mobileImageUrl}
+                  alt={category.name}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 50vw, 25vw"
+                />
+              )}
+              
+              {/* Imagen para escritorio (se muestra solo cuando isMobile es false) */}
+              {!isMobile && (
+                <Image
+                  src={category.desktopImageUrl}
+                  alt={category.name}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 50vw, 25vw"
+                />
+              )}
             </div>
             <div className="p-3 text-center">
               <h3 className="text-sm font-semibold">{category.name}</h3>

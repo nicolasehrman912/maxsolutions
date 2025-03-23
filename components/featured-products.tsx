@@ -1,6 +1,7 @@
 import { ProductGrid } from "@/components/product-grid"
 import { getProducts } from "@/lib/api/zecat"
 import { GenericProduct } from "@/lib/api/types"
+import { obtenerIdsProductosDestacados } from "@/MODIFICAR"
 
 async function fetchFeaturedProducts(productIds: number[]): Promise<GenericProduct[]> {
   try {
@@ -25,8 +26,8 @@ async function fetchFeaturedProducts(productIds: number[]): Promise<GenericProdu
 }
 
 export async function FeaturedProducts() {
-  // Specify the product IDs you want to feature - these are the ONLY products that will show
-  const featuredProductIds = [3587, 3627, 3589, 3590, 3591, 3592, 3593, 3594];
+  // Obtener los IDs de productos destacados desde la configuración centralizada
+  const featuredProductIds = obtenerIdsProductosDestacados();
   
   // Get ONLY these specific products
   const products = await fetchFeaturedProducts(featuredProductIds);

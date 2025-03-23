@@ -6,6 +6,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Phone } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { generarUrlWhatsApp } from "@/MODIFICAR"
 
 type Product = {
   id: string | number // Changed to support composite IDs
@@ -33,9 +34,11 @@ export function ProductGrid({ products }: { products: Product[] }) {
 
 // Memoized ProductCard to prevent re-renders when props don't change
 const ProductCard = memo(function ProductCard({ product }: { product: Product }) {
-  // Format WhatsApp message for product inquiry
-  const message = encodeURIComponent(`Hola, estoy interesado en el producto "${product.name}" (ID: ${product.id}). ¿Podrías proporcionarme más información?`);
-  const whatsappUrl = `https://wa.me/5491124779637?text=${message}`; // Formato correcto con código de país
+  // Usar la función generarUrlWhatsApp para obtener la URL de WhatsApp
+  const whatsappUrl = generarUrlWhatsApp('producto', { 
+    nombre: product.name, 
+    id: product.id 
+  });
 
   return (
     <Card className="overflow-hidden group">
@@ -67,4 +70,3 @@ const ProductCard = memo(function ProductCard({ product }: { product: Product })
     </Card>
   )
 })
-
