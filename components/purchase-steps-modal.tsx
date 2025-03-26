@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { generarUrlWhatsApp } from "@/MODIFICAR"
+import Link from "next/link"
 
 export function PurchaseStepsModal() {
   const [isOpen, setIsOpen] = useState(false)
@@ -20,8 +21,11 @@ export function PurchaseStepsModal() {
   const [isMobile, setIsMobile] = useState(false)
   const dialogRef = useRef<HTMLDivElement>(null)
   
-  // Detectar si es un dispositivo móvil
+  // Detectar si es un dispositivo móvil y configurar el estado inicial
   useEffect(() => {
+    setIsMounted(true)
+    
+    // Detectar si es móvil
     const checkIfMobile = () => {
       setIsMobile(window.innerWidth < 768)
     }
@@ -29,33 +33,28 @@ export function PurchaseStepsModal() {
     checkIfMobile()
     window.addEventListener('resize', checkIfMobile)
     
-    return () => window.removeEventListener('resize', checkIfMobile)
-  }, [])
-  
-  useEffect(() => {
-    setIsMounted(true)
-    
     // Verificar en localStorage si el usuario ya vio el popup
-    // Solo ejecutar en el lado del cliente
-    if (typeof window !== 'undefined') {
-      const hasSeenModal = localStorage.getItem('hasSeenPurchaseGuide')
+    const hasSeenModal = localStorage.getItem('hasSeenPurchaseGuide')
+    
+    // Mostrar el modal solo si el usuario no lo ha visto antes
+    if (!hasSeenModal) {
+      const timer = setTimeout(() => {
+        setIsOpen(true)
+      }, 1000)
       
-      // Mostrar el modal solo si el usuario no lo ha visto antes
-      if (!hasSeenModal) {
-        const timer = setTimeout(() => {
-          setIsOpen(true)
-        }, 1000)
-        
-        return () => clearTimeout(timer)
+      return () => {
+        clearTimeout(timer)
+        window.removeEventListener('resize', checkIfMobile)
       }
     }
+    
+    return () => window.removeEventListener('resize', checkIfMobile)
   }, [])
   
   // Función para cerrar el modal y guardar en localStorage
   const handleClose = () => {
-    // Guardar en localStorage que el usuario ya vio el popup
-    // Solo ejecutar en el lado del cliente
-    if (typeof window !== 'undefined') {
+    // Solo guardar en localStorage si estamos en el cliente
+    if (isMounted) {
       localStorage.setItem('hasSeenPurchaseGuide', 'true')
     }
     setIsOpen(false)
@@ -63,7 +62,7 @@ export function PurchaseStepsModal() {
   
   // Función para manejar el gesto de deslizamiento
   useEffect(() => {
-    if (!dialogRef.current || !isMobile) return
+    if (!dialogRef.current || !isMobile || !isMounted) return
     
     let startY = 0
     let currentY = 0
@@ -91,9 +90,13 @@ export function PurchaseStepsModal() {
       element.removeEventListener('touchstart', handleTouchStart)
       element.removeEventListener('touchmove', handleTouchMove)
     }
-  }, [isMobile, isOpen])
+  }, [isMobile, isOpen, isMounted])
   
+  // No renderizar nada en el servidor o antes de la hidratación
   if (!isMounted) return null;
+  
+  // Generar URL de WhatsApp solo del lado del cliente
+  const whatsappUrl = generarUrlWhatsApp('general');
   
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -161,14 +164,14 @@ export function PurchaseStepsModal() {
               <p className="text-muted-foreground text-sm sm:text-base">
                 Haz clic en el botón de WhatsApp en la página del producto para iniciar una conversación directa con nuestro equipo de ventas.
               </p>
-              <a 
-                href={generarUrlWhatsApp('general')} 
+              <Link 
+                href={whatsappUrl} 
                 target="_blank" 
                 rel="noopener noreferrer" 
                 className="inline-flex items-center mt-2 text-sm text-primary hover:underline"
               >
                 O contáctanos ahora mismo
-              </a>
+              </Link>
             </div>
           </div>
           

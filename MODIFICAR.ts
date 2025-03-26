@@ -6,36 +6,10 @@
  * Este archivo contiene todas las configuraciones que puede modificar sin necesidad
  * de conocimientos de programación. Simplemente cambie los valores siguiendo las instrucciones.
  */
-// Definiciones de tipos para asegurar compatibilidad (NO MODIFICAR)
-interface Banner {
-  id: string;
-  desktopImageUrl: string;
-  mobileImageUrl: string;
-  linkUrl: string;
-  title?: string;
-  priority: number;
-  active: boolean;
-}
-
-interface FeaturedCategory {
-  id: number;
-  name: string;
-  desktopImageUrl: string;
-  mobileImageUrl: string;
-  order: number;
-}
-
-interface FeaturedProduct {
-  id: number;
-  description?: string;
-  order: number;
-}
 
 // ==================================================================================
 // ⬇️ ÁREA DE CONFIGURACIÓN - MODIFIQUE ESTOS VALORES ⬇️
 // ==================================================================================
-
-
 
 /**
  * BANNERS PROMOCIONALES
@@ -47,7 +21,7 @@ interface FeaturedProduct {
  * - Prioridad de aparición (número más bajo aparece primero)
  * - Estado (activo/inactivo)
  */
-export const BANNERS: Banner[] = [
+export const BANNERS = [
   {
     id: 'banner-nuevos-productos',
     desktopImageUrl: 'https://i.im.ge/2025/03/22/pUzrW8.Banner-Web-Nuevos-Productos-Pampero-1580x700px.webp',
@@ -75,7 +49,7 @@ export const BANNERS: Banner[] = [
  * - ID de la categoría (debe coincidir con la API)
  * - Nombre y orden de aparición
  */
-export const FEATURED_CATEGORIES: FeaturedCategory[] = [
+export const FEATURED_CATEGORIES = [
   {
     id: 101, // Este ID debe coincidir con el de la API
     name: 'Escritura',
@@ -112,22 +86,17 @@ export const FEATURED_CATEGORIES: FeaturedCategory[] = [
  * Modifique esta sección para cambiar los productos destacados que aparecen en la página principal.
  * Para cada producto, especifique:
  * - ID del producto (debe coincidir con la API)
+ * - Source: 'zecat' o 'cdo' (según el origen del producto)
  * - Descripción (opcional, solo para referencia)
  * - Orden de aparición
  */
-export const FEATURED_PRODUCTS: FeaturedProduct[] = [
+export const FEATURED_PRODUCTS = [
   { 
-    id: 3587, 
-    description: "Producto destacado 1", // Opcional: solo para su referencia
-    order: 1 // Menor número = mayor prioridad
+    id: 1727, 
+    source: 'cdo',
+    order: 1 
   },
-  { id: 3627, description: "Producto destacado 2", order: 2 },
-  { id: 3589, description: "Producto destacado 3", order: 3 },
-  { id: 3590, description: "Producto destacado 4", order: 4 },
-  { id: 3591, description: "Producto destacado 5", order: 5 },
-  { id: 3592, description: "Producto destacado 6", order: 6 },
-  { id: 3593, description: "Producto destacado 7", order: 7 },
-  { id: 3594, description: "Producto destacado 8", order: 8 }
+  // Añada más productos aquí según necesite
 ];
 
 /**
@@ -136,8 +105,10 @@ export const FEATURED_PRODUCTS: FeaturedProduct[] = [
  * Modifique esta lista para ocultar categorías específicas en la interfaz.
  * Añada IDs de categorías que no desea que aparezcan en el sitio.
  */
-export const CATEGORIAS_OCULTAS: Array<string | {id: string, source: 'zecat' | 'cdo'}> = [
-  '164', '110','123','146','177','145','135','153','115','171','138','173','118','168','130','113','133','174','170', '147', '180','172','111'
+export const CATEGORIAS_OCULTAS: Array<string | {id: string, source?: 'zecat' | 'cdo'}> = [
+  '164', '110','123','146','177','145','135','153','115',
+  '171','138','173','118','168','130','113','133','174',
+  '170', '147', '180','172','111'
 ];
 
 /**
@@ -162,37 +133,119 @@ export const WHATSAPP = {
   }
 };
 
+/**
+ * CATEGORÍAS JERÁRQUICAS
+ * 
+ * Esta sección permite definir categorías principales y sus subcategorías.
+ * Cada categoría principal puede contener múltiples subcategorías.
+ * Las subcategorías deben existir en la API con el ID especificado.
+ */
+export const CATEGORIAS_JERARQUICAS = [
+  {
+    id: "botellas",
+    name: "Botellas",
+    description: "Todo tipo de botellas promocionales",
+    subcategories: [
+      { id: "161", name: "Tecnología" },
+      { id: "101", name: "Escritura" }
+      // Añada más subcategorías según necesite
+    ]
+  },
+  {
+    id: "textil",
+    name: "Textil",
+    description: "Productos textiles promocionales",
+    subcategories: [
+      { id: "221", name: "Bolsas, Bolsos, Maletines y Mochilas" },
+      { id: "131", name: "Próximos ingresos" }
+      // Añada más subcategorías según necesite
+    ]
+  }
+  // Añada más categorías principales según necesite
+];
+
 // ==================================================================================
-// ⬇️ DEFINICIONES TÉCNICAS - NO MODIFICAR ⬇️
+// ⬇️ NO MODIFICAR DESDE AQUÍ HACIA ABAJO ⬇️
 // ==================================================================================
+
+// Definiciones de tipos para asegurar compatibilidad (NO MODIFICAR)
+interface Banner {
+  id: string;
+  desktopImageUrl: string;
+  mobileImageUrl: string;
+  linkUrl: string;
+  title?: string;
+  priority: number;
+  active: boolean;
+}
+
+interface FeaturedCategory {
+  id: number;
+  name: string;
+  desktopImageUrl: string;
+  mobileImageUrl: string;
+  order: number;
+}
+
+interface FeaturedProduct {
+  id: number;
+  description?: string;
+  order: number;
+  source?: 'zecat' | 'cdo';
+}
+
+interface MainCategory {
+  id: string;
+  name: string;
+  description?: string;
+  subcategories: SubCategory[];
+}
+
+interface SubCategory {
+  id: string | number;
+  name: string;
+  source?: 'zecat' | 'cdo';
+}
 
 // Exportaciones de interfaces para uso en el resto de la aplicación
-export type { Banner, FeaturedCategory, FeaturedProduct };
-
-// ==================================================================================
-// ⬇️ FUNCIONES AUXILIARES - NO MODIFICAR ⬇️
-// ==================================================================================
+export type { Banner, FeaturedCategory, FeaturedProduct, MainCategory, SubCategory };
 
 /**
- * Obtiene todos los banners activos
+ * Obtiene todas las categorías principales
  */
-export function obtenerBannersActivos(): Banner[] {
-  return BANNERS.filter(banner => banner.active).sort((a, b) => a.priority - b.priority);
+export function obtenerCategoriasJerarquicas(): MainCategory[] {
+  return CATEGORIAS_JERARQUICAS;
 }
 
 /**
- * Obtiene banners para la página principal
+ * Obtiene una categoría principal por su ID
+ */
+export function obtenerCategoriaPrincipalPorId(id: string): MainCategory | undefined {
+  return CATEGORIAS_JERARQUICAS.find(cat => cat.id === id);
+}
+
+/**
+ * Obtiene todas las subcategorías (aplanadas en un solo array)
+ */
+export function obtenerTodasLasSubcategorias(): SubCategory[] {
+  return CATEGORIAS_JERARQUICAS.flatMap(cat => cat.subcategories);
+}
+
+/**
+ * Encuentra la categoría principal a la que pertenece una subcategoría
+ */
+export function encontrarCategoriaPrincipal(subcategoryId: string | number): MainCategory | undefined {
+  return CATEGORIAS_JERARQUICAS.find(mainCat => 
+    mainCat.subcategories.some(subCat => subCat.id.toString() === subcategoryId.toString())
+  );
+}
+
+/**
+ * Obtiene banners activos por ubicación
  * @returns Array con los banners activos ordenados por prioridad
  */
 export function obtenerBannersPorUbicacion(): Banner[] {
-  return obtenerBannersActivos();
-}
-
-/**
- * Obtiene un banner por su ID
- */
-export function obtenerBannerPorId(id: string): Banner | undefined {
-  return BANNERS.find(banner => banner.id === id);
+  return BANNERS.filter(banner => banner.active).sort((a, b) => a.priority - b.priority);
 }
 
 /**
@@ -205,99 +258,44 @@ export function obtenerIdsProductosDestacados(): number[] {
 }
 
 /**
- * Añade una categoría a la lista de categorías ocultas
- */
-export function ocultarCategoria(id: string, source?: 'zecat' | 'cdo'): void {
-  // Si ya existe, no añadir de nuevo
-  if (estaCategoriaOculta(id, source)) {
-    return;
-  }
-  
-  // Si no se especifica source, añadir solo el ID
-  if (!source) {
-    CATEGORIAS_OCULTAS.push(id);
-  } else {
-    CATEGORIAS_OCULTAS.push({ id, source });
-  }
-}
-
-/**
- * Elimina una categoría de la lista de categorías ocultas
- */
-export function mostrarCategoria(id: string, source?: 'zecat' | 'cdo'): void {
-  if (!source) {
-    // Eliminar todas las ocurrencias que coincidan con este ID
-    for (let i = CATEGORIAS_OCULTAS.length - 1; i >= 0; i--) {
-      const cat = CATEGORIAS_OCULTAS[i];
-      if (typeof cat === 'string' && cat === id) {
-        CATEGORIAS_OCULTAS.splice(i, 1);
-      } else if (typeof cat === 'object' && cat.id === id) {
-        CATEGORIAS_OCULTAS.splice(i, 1);
-      }
-    }
-  } else {
-    // Eliminar solo la ocurrencia específica
-    const index = CATEGORIAS_OCULTAS.findIndex(
-      cat => typeof cat === 'object' && cat.id === id && cat.source === source
-    );
-    if (index !== -1) {
-      CATEGORIAS_OCULTAS.splice(index, 1);
-    }
-  }
-}
-
-/**
  * Verifica si una categoría está oculta
  */
 export function estaCategoriaOculta(id: string, source?: 'zecat' | 'cdo'): boolean {
   return CATEGORIAS_OCULTAS.some(cat => {
     if (typeof cat === 'string') {
-      // Si es un string, comparar solo con el ID
       return cat === id;
-    } else {
-      // Si es un objeto, verificar ID y source si se proporciona
-      return cat.id === id && (!source || cat.source === source);
+    } else if (typeof cat === 'object' && cat !== null) {
+      return 'id' in cat && cat.id === id && (!source || ('source' in cat && cat.source === source));
     }
+    return false;
   });
 }
 
 /**
- * Filtra un array de categorías para eliminar las categorías ocultas
- */
-export function filtrarCategoriasOcultas<T extends { id: string | number, source: 'zecat' | 'cdo' }>(
-  categorias: T[]
-): T[] {
-  return categorias.filter(cat => 
-    !estaCategoriaOculta(cat.id.toString()) && !estaCategoriaOculta(cat.id.toString(), cat.source)
-  );
-}
-
-/**
- * Obtiene todas las categorías ocultas
- */
-export function obtenerCategoriasOcultas(): Array<string | {id: string, source: 'zecat' | 'cdo'}> {
-  return [...CATEGORIAS_OCULTAS];
-}
-
-/**
- * Genera una URL de WhatsApp con un mensaje predefinido
+ * Genera una URL de WhatsApp con el mensaje apropiado según el tipo de consulta
  */
 export function generarUrlWhatsApp(
   tipo: keyof typeof WHATSAPP.mensajes = 'general',
   datos?: { nombre?: string, id?: string | number }
 ): string {
+  // Base URL para WhatsApp
+  const baseUrl = "https://api.whatsapp.com/send";
+  
+  // Obtener el mensaje según el tipo
   let mensaje = WHATSAPP.mensajes[tipo] || WHATSAPP.mensajes.general;
   
-  // Reemplazar variables en el mensaje si es necesario
+  // Reemplazar placeholders con datos reales si se proporcionan
   if (datos) {
-    mensaje = mensaje
-      .replace('[NOMBRE]', datos.nombre || 'Producto')
-      .replace('[ID]', datos.id?.toString() || 'N/A');
+    if (datos.nombre) {
+      mensaje = mensaje.replace('[NOMBRE]', datos.nombre);
+    }
+    if (datos.id) {
+      mensaje = mensaje.replace('[ID]', datos.id.toString());
+    }
   }
   
-  // Codificar el mensaje para URL
-  const mensajeCodificado = encodeURIComponent(mensaje);
+  // Construir la URL con el número de teléfono y el mensaje
+  const url = `${baseUrl}?phone=${WHATSAPP.numeroTelefono}&text=${encodeURIComponent(mensaje)}`;
   
-  // Formato correcto con código de país
-  return `https://wa.me/${WHATSAPP.numeroTelefono}?text=${mensajeCodificado}`;
+  return url;
 } 

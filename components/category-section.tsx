@@ -11,9 +11,13 @@ import { useEffect, useState } from "react"
 export function CategorySection() {
   // Estado para detectar si estamos en un dispositivo móvil
   const [isMobile, setIsMobile] = useState(false);
+  // Estado para rastrear si el componente está montado en el cliente
+  const [isMounted, setIsMounted] = useState(false);
 
-  // Detectar si estamos en móvil cuando el componente se monta y si cambia el tamaño de ventana
+  // Detectar si estamos en móvil y marcar como montado cuando el componente se monta
   useEffect(() => {
+    setIsMounted(true);
+    
     const checkIfMobile = () => {
       setIsMobile(window.innerWidth < 768); // Considerar móvil en menos de 768px
     };
@@ -27,6 +31,22 @@ export function CategorySection() {
     // Limpiar listener al desmontar
     return () => window.removeEventListener('resize', checkIfMobile);
   }, []);
+
+  // Función para renderizar las imágenes de categoría de manera consistente
+  const renderCategoryImage = (category: typeof FEATURED_CATEGORIES[0]) => {
+    // Usar la imagen de escritorio como fallback inicial para SSR y durante la hidratación
+    const imageUrl = isMounted && isMobile ? category.mobileImageUrl : category.desktopImageUrl;
+    
+    return (
+      <Image
+        src={imageUrl}
+        alt={category.name}
+        fill
+        className="object-cover"
+        sizes="(max-width: 768px) 50vw, 25vw"
+      />
+    );
+  };
 
   return (
     <section className="space-y-6">
@@ -44,27 +64,7 @@ export function CategorySection() {
             className="group flex flex-col overflow-hidden rounded-lg border hover:shadow-md transition-all"
           >
             <div className="aspect-[4/3] w-full bg-muted relative">
-              {/* Imagen para móvil (se muestra solo cuando isMobile es true) */}
-              {isMobile && (
-                <Image
-                  src={category.mobileImageUrl}
-                  alt={category.name}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 50vw, 25vw"
-                />
-              )}
-              
-              {/* Imagen para escritorio (se muestra solo cuando isMobile es false) */}
-              {!isMobile && (
-                <Image
-                  src={category.desktopImageUrl}
-                  alt={category.name}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 50vw, 25vw"
-                />
-              )}
+              {renderCategoryImage(category)}
             </div>
             <div className="p-3 text-center">
               <h3 className="text-sm font-semibold">{category.name}</h3>

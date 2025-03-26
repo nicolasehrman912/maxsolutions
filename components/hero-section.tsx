@@ -10,13 +10,29 @@ export function HeroSection() {
   const [banners, setBanners] = useState<ReturnType<typeof obtenerBannersPorUbicacion>>([]);
   // Estado para detectar si estamos en un dispositivo móvil
   const [isMobile, setIsMobile] = useState(false);
+  // Estado para rastrear si el componente está montado en el cliente
+  const [isMounted, setIsMounted] = useState(false);
   // Estado para controlar qué banner se muestra actualmente
   const [currentIndex, setCurrentIndex] = useState(0);
   // Estado para controlar si las imágenes están cargadas
   const [imagesLoaded, setImagesLoaded] = useState<Record<string, boolean>>({});
 
-  // Detectar si estamos en móvil cuando el componente se monta y si cambia el tamaño de ventana
+  // Marcar el componente como montado en el cliente
   useEffect(() => {
+    setIsMounted(true);
+    
+    // Obtener banners de la ubicación 'home'
+    const heroBanners = obtenerBannersPorUbicacion('home');
+    setBanners(heroBanners);
+    
+    // Inicializar el estado de carga de imágenes
+    const initialLoadState: Record<string, boolean> = {};
+    heroBanners.forEach(banner => {
+      initialLoadState[banner.id] = false;
+    });
+    setImagesLoaded(initialLoadState);
+    
+    // Detectar si estamos en móvil
     const checkIfMobile = () => {
       setIsMobile(window.innerWidth < 768); // Considerar móvil en menos de 768px
     };
@@ -31,19 +47,6 @@ export function HeroSection() {
     return () => window.removeEventListener('resize', checkIfMobile);
   }, []);
 
-  // Cargar banners de la ubicación 'home' cuando el componente se monte
-  useEffect(() => {
-    const heroBanners = obtenerBannersPorUbicacion('home');
-    setBanners(heroBanners);
-    
-    // Inicializar el estado de carga de imágenes
-    const initialLoadState: Record<string, boolean> = {};
-    heroBanners.forEach(banner => {
-      initialLoadState[banner.id] = false;
-    });
-    setImagesLoaded(initialLoadState);
-  }, []);
-
   // Función para actualizar el estado cuando una imagen termina de cargar
   const handleImageLoad = useCallback((bannerId: string) => {
     setImagesLoaded(prev => ({
@@ -54,102 +57,55 @@ export function HeroSection() {
 
   // Efecto para cambiar automáticamente los banners cada 5 segundos
   useEffect(() => {
-    if (banners.length <= 1) return; // No hay necesidad de rotar si hay uno o ningún banner
+    if (!isMounted || banners.length <= 1) return; // No hay necesidad de rotar si hay uno o ningún banner
     
     const interval = setInterval(() => {
       setCurrentIndex(prevIndex => (prevIndex + 1) % banners.length);
     }, 5000);
     
     return () => clearInterval(interval);
-  }, [banners.length]);
+  }, [banners.length, isMounted]);
 
   // Si no hay banners configurados, no mostrar nada
   if (banners.length === 0) {
     return null;
   }
 
-  // Si solo hay un banner, simplemente mostrarlo sin animación
-  if (banners.length === 1) {
-    const banner = banners[0];
+  // Renderización del banner - igual en servidor y cliente
+  const renderBanner = (banner: ReturnType<typeof obtenerBannersPorUbicacion>[0], index: number) => {
+    const imageUrl = isMounted && isMobile ? banner.mobileImageUrl : banner.desktopImageUrl;
     return (
-      <div className="w-full relative h-[500px] overflow-hidden">
-        <Link 
-          href={banner.linkUrl}
-          className="block w-full h-full"
-        >
-          {banner.title && (
-            <div className="absolute z-20 top-1/2 left-12 transform -translate-y-1/2 max-w-lg">
-              <h2 className="text-4xl font-bold text-black drop-shadow-lg mb-4">{banner.title}</h2>
-            </div>
-          )}
-          
-          {isMobile ? (
-            <Image
-              src={banner.mobileImageUrl}
-              alt={banner.title || "Banner promocional"}
-              fill
-              className="object-cover"
-              priority={true}
-              sizes="100vw"
-              onLoad={() => handleImageLoad(banner.id)}
-            />
-          ) : (
-            <Image
-              src={banner.desktopImageUrl}
-              alt={banner.title || "Banner promocional"}
-              fill
-              className="object-cover"
-              priority={true}
-              sizes="100vw"
-              onLoad={() => handleImageLoad(banner.id)}
-            />
-          )}
-        </Link>
-      </div>
+      <Link 
+        key={banner.id}
+        href={banner.linkUrl}
+        className={`absolute inset-0 transition-opacity duration-1000 ${
+          index === currentIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'
+        }`}
+      >
+        {banner.title && (
+          <div className="absolute z-20 top-1/2 left-12 transform -translate-y-1/2 max-w-lg">
+            <h2 className="text-4xl font-bold text-black drop-shadow-lg mb-4">{banner.title}</h2>
+          </div>
+        )}
+        
+        <Image
+          src={imageUrl}
+          alt={banner.title || "Banner promocional"}
+          fill
+          className="object-cover"
+          priority={index === currentIndex || index === (currentIndex + 1) % banners.length}
+          sizes="100vw"
+          onLoad={() => handleImageLoad(banner.id)}
+        />
+      </Link>
     );
-  }
+  };
 
   // Para múltiples banners, implementar carrusel
   return (
     <div className="w-full relative h-[500px] overflow-hidden">
       {/* Renderizar todos los banners pero solo mostrar el actual */}
-      {banners.map((banner, index) => (
-        <Link 
-          key={banner.id}
-          href={banner.linkUrl}
-          className={`absolute inset-0 transition-opacity duration-1000 ${
-            index === currentIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'
-          }`}
-        >
-          {banner.title && (
-            <div className="absolute z-20 top-1/2 left-12 transform -translate-y-1/2 max-w-lg">
-              <h2 className="text-4xl font-bold text-black drop-shadow-lg mb-4">{banner.title}</h2>
-            </div>
-          )}
-          
-          {isMobile ? (
-            <Image
-              src={banner.mobileImageUrl}
-              alt={banner.title || "Banner promocional"}
-              fill
-              className="object-cover"
-              priority={index === currentIndex || index === (currentIndex + 1) % banners.length}
-              sizes="100vw"
-              onLoad={() => handleImageLoad(banner.id)}
-            />
-          ) : (
-            <Image
-              src={banner.desktopImageUrl}
-              alt={banner.title || "Banner promocional"}
-              fill
-              className="object-cover"
-              priority={index === currentIndex || index === (currentIndex + 1) % banners.length}
-              sizes="100vw"
-              onLoad={() => handleImageLoad(banner.id)}
-            />
-          )}
-        </Link>
-      ))}
+      {banners.map((banner, index) => renderBanner(banner, index))}
       
       {/* Indicadores de posición */}
       <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2 z-20">
@@ -165,8 +121,8 @@ export function HeroSection() {
         ))}
       </div>
       
-      {/* Controles de navegación */}
-      {banners.length > 1 && (
+      {/* Controles de navegación - solo mostrar si hay más de un banner */}
+      {banners.length > 1 && isMounted && (
         <>
           <button 
             onClick={() => setCurrentIndex((currentIndex - 1 + banners.length) % banners.length)}

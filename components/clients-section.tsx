@@ -1,12 +1,22 @@
+"use client"
+
+import { useState, useEffect } from "react"
 import Image from "next/image"
 
 export function ClientsSection() {
+  const [isMounted, setIsMounted] = useState(false)
+  
+  // Set mounted state to true when component is mounted on client
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+  
   const clients = [
     { id: 1, name: "Cliente 1", logo: "/logo/nikon.png" },
     { id: 2, name: "Cliente 2", logo: "/logo/tigre.png" },
     { id: 3, name: "Cliente 3", logo: "/logo/vl.png" },
     { id: 4, name: "Cliente 4", logo: "/logo/ktl.jpg" },
-    { id: 5, name: "Cliente 5", logo: "logo/multipoint.png" },
+    { id: 5, name: "Cliente 5", logo: "/logo/multipoint.png" },
   ];
 
   return (
@@ -22,6 +32,8 @@ export function ClientsSection() {
                 width={150}
                 height={100}
                 className="object-contain"
+                // Add loading priority to ensure all images load the same way server/client
+                priority={isMounted ? undefined : true}
               />
             </div>
           ))}

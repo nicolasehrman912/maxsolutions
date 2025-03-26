@@ -42,8 +42,8 @@ const ProductCard = memo(function ProductCard({ product }: { product: Product })
 
   return (
     <Card className="overflow-hidden group">
-      <Link href={`/products/${product.id}`}>
-        <div className="relative aspect-square overflow-hidden">
+      <Link href={`/products/${product.id}`} legacyBehavior={false}>
+        <div className="relative aspect-square overflow-hidden cursor-pointer">
           {/* Use standard img tag for better performance */}
           <img
             src={product.image || "/placeholder.svg"}
@@ -51,21 +51,26 @@ const ProductCard = memo(function ProductCard({ product }: { product: Product })
             loading="lazy"
             className="object-cover w-full h-full transition-transform group-hover:scale-105"
           />
+          {product.totalStock === 0 && (
+            <div className="absolute top-0 right-0 bg-destructive text-destructive-foreground text-xs font-medium px-2 py-1">
+              Sin stock
+            </div>
+          )}
         </div>
       </Link>
       <CardContent className="p-4">
-        <Link href={`/products/${product.id}`} className="hover:underline">
-          <h3 className="font-medium">{product.name}</h3>
+        <Link href={`/products/${product.id}`} legacyBehavior={false}>
+          <h3 className="font-medium cursor-pointer hover:underline">{product.name}</h3>
         </Link>
         <p className="text-sm text-muted-foreground mt-1">{product.category}</p>
       </CardContent>
       <CardFooter className="p-4 pt-0">
-        <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="w-full">
+        <Link href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="w-full">
           <Button className="w-full" size="sm">
             <Phone className="h-4 w-4 mr-2" />
             Contactar
           </Button>
-        </a>
+        </Link>
       </CardFooter>
     </Card>
   )
