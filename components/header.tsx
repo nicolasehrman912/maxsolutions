@@ -166,9 +166,14 @@ function DesktopNavigation() {
 export function Header() {
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [whatsappUrl, setWhatsappUrl] = useState("#")
+  const [isMounted, setIsMounted] = useState(false)
   
-  // Usar la función generarUrlWhatsApp para obtener la URL de WhatsApp
-  const whatsappUrl = generarUrlWhatsApp('general')
+  // Update WhatsApp URL after hydration
+  useEffect(() => {
+    setIsMounted(true)
+    setWhatsappUrl(generarUrlWhatsApp('general'))
+  }, [])
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -188,28 +193,35 @@ export function Header() {
           <div className="flex items-center gap-4">
             {/* Search (only on desktop) */}
             <div className="hidden md:block w-[300px]">
-            <Suspense fallback={
+              <Suspense fallback={
                 <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  disabled
-                  placeholder="Cargando..."
-                  className="w-full pl-9 pr-4"
-                />
-              </div>
-            }>
-              <SearchForm />
-            </Suspense>
-          </div>
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    disabled
+                    placeholder="Cargando..."
+                    className="w-full pl-9 pr-4"
+                  />
+                </div>
+              }>
+                <SearchForm />
+              </Suspense>
+            </div>
           
             {/* Contact button */}
             <div className="hidden md:block">
-              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
-                <Button size="sm">
+              {isMounted ? (
+                <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
+                  <Button size="sm">
+                    <Phone className="h-4 w-4 mr-2" />
+                    Contactar
+                  </Button>
+                </a>
+              ) : (
+                <Button size="sm" disabled>
                   <Phone className="h-4 w-4 mr-2" />
                   Contactar
                 </Button>
-              </a>
+              )}
             </div>
             
             {/* Mobile menu button */}

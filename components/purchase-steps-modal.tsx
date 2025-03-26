@@ -20,6 +20,7 @@ export function PurchaseStepsModal() {
   const [isMounted, setIsMounted] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const dialogRef = useRef<HTMLDivElement>(null)
+  const [whatsappUrl, setWhatsappUrl] = useState("#")
   
   // Detectar si es un dispositivo móvil y configurar el estado inicial
   useEffect(() => {
@@ -29,6 +30,9 @@ export function PurchaseStepsModal() {
     const checkIfMobile = () => {
       setIsMobile(window.innerWidth < 768)
     }
+    
+    // Generar URL de WhatsApp solo del lado del cliente
+    setWhatsappUrl(generarUrlWhatsApp('general'))
     
     checkIfMobile()
     window.addEventListener('resize', checkIfMobile)
@@ -92,11 +96,11 @@ export function PurchaseStepsModal() {
     }
   }, [isMobile, isOpen, isMounted])
   
-  // No renderizar nada en el servidor o antes de la hidratación
-  if (!isMounted) return null;
-  
-  // Generar URL de WhatsApp solo del lado del cliente
-  const whatsappUrl = generarUrlWhatsApp('general');
+  // Durante la renderización del lado del servidor, devolvemos un componente que coincida estructuralmente 
+  // con la versión del lado del cliente, pero que no dependa de ninguna API del navegador
+  if (!isMounted) {
+    return null; // No renderizamos nada en el servidor para evitar inconsistencias
+  }
   
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>

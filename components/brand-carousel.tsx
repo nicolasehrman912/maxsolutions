@@ -39,14 +39,18 @@ export function BrandCarousel() {
   // Only run effects after hydration completes
   useEffect(() => {
     setIsMounted(true)
+  }, [])
+
+  // Only start carousel after hydration
+  useEffect(() => {
+    if (!isMounted) return
     
-    // Only start the interval after client-side hydration is complete
     const interval = setInterval(() => {
       setCurrentIndex((prevIndex) => (prevIndex + 1) % brands.length)
     }, 3000)
 
     return () => clearInterval(interval)
-  }, [])
+  }, [isMounted])
 
   // Only scroll after hydration completes
   useEffect(() => {
@@ -59,72 +63,47 @@ export function BrandCarousel() {
     })
   }, [currentIndex, isMounted])
 
-  // Render a static version during SSR to prevent hydration mismatches
+  // Return static markup during SSR
   if (!isMounted) {
-    // Return a simpler static version that matches initial client render
     return (
-      <section className="space-y-6">
-        <div className="flex flex-col items-center text-center space-y-2">
-          <h2 className="text-3xl font-bold tracking-tight">Nuestras Marcas</h2>
-          <p className="text-muted-foreground max-w-[600px]">
-            Colaboramos con marcas premium para ofrecerte la mejor calidad
-          </p>
-        </div>
-
-        <div className="relative overflow-hidden">
-          <div
-            className="flex space-x-6 py-4 overflow-x-auto scrollbar-hide"
-            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-          >
-            {brands.map((brand, index) => (
-              <Card key={index} className="flex-shrink-0 w-[200px]">
-                <CardContent className="flex items-center justify-center p-6 h-[100px]">
-                  <div className="relative w-full h-full">
-                    <Image src={brand.logo || "/placeholder.svg"} alt={brand.name} fill className="object-contain" />
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-    )
-  }
-
-  // Client-side interactive version
-  return (
-    <section className="space-y-6">
-      <div className="flex flex-col items-center text-center space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Nuestras Marcas</h2>
-        <p className="text-muted-foreground max-w-[600px]">
-          Colaboramos con marcas premium para ofrecerte la mejor calidad
-        </p>
-      </div>
-
       <div className="relative overflow-hidden">
-        <div
-          ref={carouselRef}
-          className="flex space-x-6 py-4 overflow-x-auto scrollbar-hide"
-          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-        >
-          {brands.map((brand, index) => (
-            <Card key={index} className="flex-shrink-0 w-[200px]">
-              <CardContent className="flex items-center justify-center p-6 h-[100px]">
-                <div className="relative w-full h-full">
-                  <Image src={brand.logo || "/placeholder.svg"} alt={brand.name} fill className="object-contain" />
-                </div>
+        <div className="flex gap-8 py-8" ref={carouselRef}>
+          {brands.slice(0, 3).map((brand) => (
+            <Card key={brand.name} className="shrink-0">
+              <CardContent className="flex h-[120px] w-[200px] items-center justify-center p-6">
+                <Image
+                  src={brand.logo}
+                  alt={brand.name}
+                  width={120}
+                  height={60}
+                  className="object-contain"
+                />
               </CardContent>
             </Card>
           ))}
         </div>
-
-        <style jsx>{`
-          .scrollbar-hide::-webkit-scrollbar {
-            display: none;
-          }
-        `}</style>
       </div>
-    </section>
+    )
+  }
+
+  return (
+    <div className="relative overflow-hidden">
+      <div className="flex gap-8 py-8" ref={carouselRef}>
+        {brands.map((brand) => (
+          <Card key={brand.name} className="shrink-0">
+            <CardContent className="flex h-[120px] w-[200px] items-center justify-center p-6">
+              <Image
+                src={brand.logo}
+                alt={brand.name}
+                width={120}
+                height={60}
+                className="object-contain"
+              />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
   )
 }
 

@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { memo, useMemo } from "react"
+import { memo, useMemo, useState, useEffect } from "react"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Phone } from "lucide-react"
@@ -34,11 +34,17 @@ export function ProductGrid({ products }: { products: Product[] }) {
 
 // Memoized ProductCard to prevent re-renders when props don't change
 const ProductCard = memo(function ProductCard({ product }: { product: Product }) {
-  // Usar la función generarUrlWhatsApp para obtener la URL de WhatsApp
-  const whatsappUrl = generarUrlWhatsApp('producto', { 
-    nombre: product.name, 
-    id: product.id 
-  });
+  const [whatsappUrl, setWhatsappUrl] = useState("#");
+  const [isMounted, setIsMounted] = useState(false);
+  
+  // Only update WhatsApp URL after hydration
+  useEffect(() => {
+    setIsMounted(true);
+    setWhatsappUrl(generarUrlWhatsApp('producto', { 
+      nombre: product.name, 
+      id: product.id 
+    }));
+  }, [product.id, product.name]);
 
   return (
     <Card className="overflow-hidden group">
@@ -65,12 +71,19 @@ const ProductCard = memo(function ProductCard({ product }: { product: Product })
         <p className="text-sm text-muted-foreground mt-1">{product.category}</p>
       </CardContent>
       <CardFooter className="p-4 pt-0">
-        <Link href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="w-full">
-          <Button className="w-full" size="sm">
+        {isMounted ? (
+          <Link href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="w-full">
+            <Button className="w-full" size="sm">
+              <Phone className="h-4 w-4 mr-2" />
+              Contactar
+            </Button>
+          </Link>
+        ) : (
+          <Button className="w-full" size="sm" disabled>
             <Phone className="h-4 w-4 mr-2" />
             Contactar
           </Button>
-        </Link>
+        )}
       </CardFooter>
     </Card>
   )

@@ -278,6 +278,12 @@ export function generarUrlWhatsApp(
   tipo: keyof typeof WHATSAPP.mensajes = 'general',
   datos?: { nombre?: string, id?: string | number }
 ): string {
+  // Comprobamos si estamos en el servidor
+  if (typeof window === 'undefined') {
+    // En el servidor, devolvemos un marcador de posición que será reemplazado en el cliente
+    return "#";
+  }
+  
   // Base URL para WhatsApp
   const baseUrl = "https://api.whatsapp.com/send";
   

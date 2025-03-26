@@ -8,9 +8,10 @@ import { ProductsPageSkeleton } from "@/components/skeletons/products-page-skele
 import { CategoriesSidebar } from "@/components/categories/categories-sidebar"
 import { formatCategories, getAllSubcategoryIds } from "@/lib/categories"
 import ProductListingClient from "@/components/product-listing-client"
+import { MobileFilterButton } from "@/components/mobile-filter-button"
 
 export const dynamic = 'force-dynamic'; // Forzar renderizado dinámico para los filtros
-export const revalidate = 14400; // Revalidar esta página cada 4 horas
+export const revalidate = 3600; // Revalidar esta página cada hora
 
 interface SearchParams {
   page?: string
@@ -131,8 +132,8 @@ export default async function ProductsPage({
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row gap-8">
-          {/* Filters sidebar */}
-          <div className="w-full md:w-64 space-y-4">
+          {/* Sidebar - Hidden on mobile */}
+          <div className="hidden md:block w-64 flex-shrink-0">
             <Suspense fallback={
               <div className="space-y-4 animate-pulse">
                 <div className="flex items-center justify-between">
@@ -159,7 +160,7 @@ export default async function ProductsPage({
             </Suspense>
           </div>
           
-          {/* Products grid */}
+          {/* Main Content */}
           <div className="flex-1">
             <div className="flex items-center justify-between mb-6">
               <h1 className="text-2xl font-bold">Productos</h1>
@@ -176,6 +177,11 @@ export default async function ProductsPage({
               />
             </Suspense>
           </div>
+        </div>
+
+        {/* Floating Filter Button - Only visible on mobile */}
+        <div className="md:hidden">
+          <MobileFilterButton />
         </div>
       </div>
     )

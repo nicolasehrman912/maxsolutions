@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Phone, Search, ChevronRight } from "lucide-react";
+import { Phone, Search, ChevronRight, X, Home, Grid, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState, useEffect } from "react";
@@ -15,6 +15,38 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+// Client component for search form
+function MobileSearchForm({ onClose }: { onClose: () => void }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const searchTerm = searchParams.get("search") || "";
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const search = formData.get("search") as string;
+    if (search) {
+      router.push(`/products?search=${encodeURIComponent(search)}`);
+      onClose();
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="relative">
+      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+      <Input
+        name="search"
+        placeholder="Buscar productos..."
+        defaultValue={searchTerm}
+        className="w-full pl-9 pr-4 bg-white"
+        autoComplete="off"
+      />
+    </form>
+  );
+}
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -22,183 +54,171 @@ interface MobileMenuProps {
   pathname: string;
 }
 
-// Client component for search form
-function MobileSearchForm({ onClose }: { onClose: () => void }) {
-  const searchParams = useSearchParams();
-  const [isClient, setIsClient] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  
-  useEffect(() => {
-    setIsClient(true);
-    setSearchTerm(searchParams?.get("search") || "");
-  }, [searchParams]);
-  
-  if (!isClient) {
-    return (
-      <div className="relative">
-        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input
-          disabled
-          placeholder="Buscar productos..."
-          className="w-full pl-9 pr-4"
-        />
-      </div>
-    );
-  }
-  
-  return (
-    <form action="/products" method="get" onSubmit={onClose}>
-      <div className="relative">
-        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input
-          type="search"
-          name="search"
-          placeholder="Buscar productos..."
-          defaultValue={searchTerm}
-          className="w-full pl-9 pr-4"
-          autoComplete="off"
-        />
-        <input type="hidden" name="page" value="1" />
-      </div>
-    </form>
-  );
-}
-
-// Mobile category navigation component
-function MobileCategoryNavigation({ onClose }: { onClose: () => void }) {
+export function MobileMenu({ isOpen, onClose, pathname }: MobileMenuProps) {
   const router = useRouter();
+  const [whatsappUrl, setWhatsappUrl] = useState<string>("#");
+  const [isMounted, setIsMounted] = useState<boolean>(false);
   const [categories, setCategories] = useState<CategoryData[]>([]);
-  const [isClient, setIsClient] = useState(false);
-  
+
   useEffect(() => {
-    setIsClient(true);
-    // Load categories
-    const loadedCategories = formatCategories();
-    setCategories(loadedCategories);
+    const loadData = () => {
+      setIsMounted(true);
+      setWhatsappUrl(generarUrlWhatsApp('general'));
+      const loadedCategories = formatCategories();
+      setCategories(loadedCategories);
+    };
+
+    loadData();
   }, []);
-  
-  // Handle main category click
-  const handleMainCategoryClick = (categoryId: string | number) => {
+
+  const handleCategoryClick = (categoryId: string | number) => {
     router.push(`/products?category=${categoryId}`);
     onClose();
   };
-  
-  // Handle subcategory click
-  const handleSubcategoryClick = (subcategoryId: string | number) => {
-    router.push(`/products?category=${subcategoryId}`);
-    onClose();
-  };
-  
-  // Return a placeholder during server-side rendering
-  if (!isClient) {
-    return <div className="space-y-2"></div>;
-  }
-  
-  return (
-    <div className="space-y-2">
-      <h3 className="font-medium text-sm mb-2">Categorías</h3>
-      <Accordion type="multiple" className="w-full">
-        {categories.map((category) => (
-          <AccordionItem key={category.id} value={category.id.toString()} className="border-b">
-            <div className="flex items-center">
-              {category.subcategories && category.subcategories.length > 0 ? (
-                <AccordionTrigger className="flex-1 py-2 px-0">
-                  <span className="text-sm">{category.name}</span>
-                </AccordionTrigger>
-              ) : (
-                <button
-                  onClick={() => handleMainCategoryClick(category.id)}
-                  className="flex items-center justify-between w-full py-3 text-sm text-left"
-                >
-                  <span>{category.name}</span>
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-            
-            {category.subcategories && category.subcategories.length > 0 && (
-              <AccordionContent>
-                <div className="pl-4 space-y-2 py-1">
-                  <button
-                    onClick={() => handleMainCategoryClick(category.id)}
-                    className="flex items-center justify-between w-full py-2 text-sm text-left font-medium"
-                  >
-                    <span>Ver todos los productos</span>
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                  
-                  {category.subcategories.map((subcategory) => (
-                    <button
-                      key={subcategory.id}
-                      onClick={() => handleSubcategoryClick(subcategory.id)}
-                      className="flex items-center justify-between w-full py-2 text-sm text-left"
-                    >
-                      <span>{subcategory.name}</span>
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                  ))}
-                </div>
-              </AccordionContent>
-            )}
-          </AccordionItem>
-        ))}
-      </Accordion>
-    </div>
-  );
-}
 
-export function MobileMenu({ isOpen, onClose, pathname }: MobileMenuProps) {
   if (!isOpen) return null;
-  
-  // Usar la función generarUrlWhatsApp para obtener la URL de WhatsApp
-  const whatsappUrl = generarUrlWhatsApp('general');
-  
+
   return (
-    <div className="md:hidden fixed inset-0 z-50 bg-background overflow-y-auto pb-20">
-      <div className="container mx-auto px-4 py-4 space-y-6">
-        {/* Search Bar */}
-        <Suspense fallback={
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              disabled
-              placeholder="Cargando..."
-              className="w-full pl-9 pr-4"
-            />
-          </div>
-        }>
-          <MobileSearchForm onClose={onClose} />
-        </Suspense>
-        
-        <nav className="flex flex-col space-y-4">
-          <Link 
-            href="/" 
-            className={pathname === "/" ? "font-medium" : ""}
-            onClick={onClose}
-          >
-            Inicio
-          </Link>
-          <Link 
-            href="/products" 
-            className={pathname.startsWith("/products") ? "font-medium" : ""}
-            onClick={onClose}
-          >
-            Todos los Productos
-          </Link>
-        </nav>
-        
-        {/* Category Navigation */}
-        <div className="pt-4 border-t">
-          <MobileCategoryNavigation onClose={onClose} />
+    <div className="fixed inset-0 z-50 bg-white">
+      <div className="flex flex-col h-full bg-white">
+        {/* Header */}
+        <div className="sticky top-0 z-40 flex items-center justify-between p-4 border-b bg-white shadow-sm">
+          <h2 className="text-lg font-semibold">Menú</h2>
+          <button onClick={onClose} className="p-2">
+            <X className="h-6 w-6" />
+          </button>
         </div>
-        
-        <div className="pt-4 border-t">
-          <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
-            <Button className="w-full">
-              <Phone className="h-4 w-4 mr-2" />
-              Contactar por WhatsApp
-            </Button>
-          </a>
+
+        {/* Search Bar */}
+        <div className="p-4 border-b bg-white">
+          {isMounted ? (
+            <MobileSearchForm onClose={onClose} />
+          ) : (
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                disabled
+                placeholder="Cargando..."
+                className="w-full pl-9 pr-4 bg-white"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Tabs for Navigation and Filters */}
+        <Tabs defaultValue="navigation" className="flex-1 bg-white">
+          <div className="sticky top-[57px] z-30 bg-white border-b shadow-sm">
+            <TabsList className="w-full justify-start rounded-none border-b bg-white">
+              <TabsTrigger value="navigation" className="flex-1 data-[state=active]:bg-white">
+                <Home className="h-4 w-4 mr-2" />
+                Navegación
+              </TabsTrigger>
+              <TabsTrigger value="filters" className="flex-1 data-[state=active]:bg-white">
+                <Filter className="h-4 w-4 mr-2" />
+                Filtros
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          <ScrollArea className="flex-1 bg-white">
+            <TabsContent value="navigation" className="m-0 p-4 pb-24 bg-white">
+              <nav className="space-y-2">
+                <Link
+                  href="/"
+                  className={`block p-2 rounded-lg hover:bg-gray-50 ${
+                    pathname === "/" ? "bg-gray-50" : ""
+                  }`}
+                  onClick={onClose}
+                >
+                  Inicio
+                </Link>
+                <Link
+                  href="/products"
+                  className={`block p-2 rounded-lg hover:bg-gray-50 ${
+                    pathname.startsWith("/products") ? "bg-gray-50" : ""
+                  }`}
+                  onClick={onClose}
+                >
+                  Todos los Productos
+                </Link>
+              </nav>
+            </TabsContent>
+
+            <TabsContent value="filters" className="m-0 p-4 pb-24 bg-white">
+              {isMounted ? (
+                <div className="space-y-4">
+                  <Accordion type="multiple" className="w-full">
+                    {categories.map((category) => (
+                      <AccordionItem key={category.id} value={category.id.toString()} className="border-b bg-white">
+                        <div className="flex items-center bg-white">
+                          {category.subcategories && category.subcategories.length > 0 ? (
+                            <AccordionTrigger className="flex-1 py-2 px-0 hover:bg-gray-50">
+                              <span className="text-sm">{category.name}</span>
+                            </AccordionTrigger>
+                          ) : (
+                            <button
+                              onClick={() => handleCategoryClick(category.id)}
+                              className="flex items-center justify-between w-full py-3 text-sm text-left hover:bg-gray-50"
+                            >
+                              <span>{category.name}</span>
+                              <ChevronRight className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                        
+                        {category.subcategories && category.subcategories.length > 0 && (
+                          <AccordionContent className="bg-white">
+                            <div className="pl-4 space-y-2 py-1">
+                              <button
+                                onClick={() => handleCategoryClick(category.id)}
+                                className="flex items-center justify-between w-full py-2 text-sm text-left font-medium hover:bg-gray-50"
+                              >
+                                <span>Ver todos los productos</span>
+                                <ChevronRight className="h-4 w-4" />
+                              </button>
+                              
+                              {category.subcategories.map((subcategory) => (
+                                <button
+                                  key={subcategory.id}
+                                  onClick={() => handleCategoryClick(subcategory.id)}
+                                  className="flex items-center justify-between w-full py-2 text-sm text-left hover:bg-gray-50"
+                                >
+                                  <span>{subcategory.name}</span>
+                                  <ChevronRight className="h-4 w-4" />
+                                </button>
+                              ))}
+                            </div>
+                          </AccordionContent>
+                        )}
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
+                </div>
+              ) : (
+                <div className="p-4">
+                  <div className="animate-pulse space-y-4">
+                    <div className="h-6 bg-gray-100 rounded w-3/4"></div>
+                    <div className="h-6 bg-gray-100 rounded w-1/2"></div>
+                    <div className="h-6 bg-gray-100 rounded w-2/3"></div>
+                  </div>
+                </div>
+              )}
+            </TabsContent>
+          </ScrollArea>
+        </Tabs>
+
+        {/* Footer with Contact Button */}
+        <div className="sticky bottom-0 p-4 border-t bg-white shadow-t">
+          <Button className="w-full" disabled={!isMounted}>
+            <Phone className="h-4 w-4 mr-2" />
+            {isMounted ? (
+              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="w-full">
+                Contactar por WhatsApp
+              </a>
+            ) : (
+              "Contactar por WhatsApp"
+            )}
+          </Button>
         </div>
       </div>
     </div>

@@ -21,8 +21,8 @@ export function HeroSection() {
   useEffect(() => {
     setIsMounted(true);
     
-    // Obtener banners de la ubicación 'home'
-    const heroBanners = obtenerBannersPorUbicacion('home');
+    // Obtener banners de la ubicación
+    const heroBanners = obtenerBannersPorUbicacion();
     setBanners(heroBanners);
     
     // Inicializar el estado de carga de imágenes
@@ -66,63 +66,67 @@ export function HeroSection() {
     return () => clearInterval(interval);
   }, [banners.length, isMounted]);
 
+  // Si no estamos montados, renderizamos una versión estática para SSR
+  if (!isMounted) {
+    return (
+      <div className="w-full relative h-[500px] overflow-hidden bg-muted/20 animate-pulse">
+        {/* Placeholder para SSR */}
+      </div>
+    );
+  }
+
   // Si no hay banners configurados, no mostrar nada
   if (banners.length === 0) {
     return null;
   }
 
-  // Renderización del banner - igual en servidor y cliente
-  const renderBanner = (banner: ReturnType<typeof obtenerBannersPorUbicacion>[0], index: number) => {
-    const imageUrl = isMounted && isMobile ? banner.mobileImageUrl : banner.desktopImageUrl;
-    return (
+  // Renderización del banner - solo se ejecuta en cliente
+  const currentBanner = banners[currentIndex];
+  const imageUrl = isMobile ? currentBanner.mobileImageUrl : currentBanner.desktopImageUrl;
+
+  // Para múltiples banners, implementar carrusel
+  return (
+    <div className="w-full relative h-[500px] overflow-hidden">
+      {/* Renderizar el banner actual */}
       <Link 
-        key={banner.id}
-        href={banner.linkUrl}
-        className={`absolute inset-0 transition-opacity duration-1000 ${
-          index === currentIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'
-        }`}
+        href={currentBanner.linkUrl}
+        className="absolute inset-0 z-10"
       >
-        {banner.title && (
+        {currentBanner.title && (
           <div className="absolute z-20 top-1/2 left-12 transform -translate-y-1/2 max-w-lg">
-            <h2 className="text-4xl font-bold text-black drop-shadow-lg mb-4">{banner.title}</h2>
+            <h2 className="text-4xl font-bold text-black drop-shadow-lg mb-4">{currentBanner.title}</h2>
           </div>
         )}
         
         <Image
           src={imageUrl}
-          alt={banner.title || "Banner promocional"}
+          alt={currentBanner.title || "Banner promocional"}
           fill
           className="object-cover"
-          priority={index === currentIndex || index === (currentIndex + 1) % banners.length}
+          priority={true}
           sizes="100vw"
-          onLoad={() => handleImageLoad(banner.id)}
+          onLoad={() => handleImageLoad(currentBanner.id)}
         />
       </Link>
-    );
-  };
-
-  // Para múltiples banners, implementar carrusel
-  return (
-    <div className="w-full relative h-[500px] overflow-hidden">
-      {/* Renderizar todos los banners pero solo mostrar el actual */}
-      {banners.map((banner, index) => renderBanner(banner, index))}
       
-      {/* Indicadores de posición */}
-      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2 z-20">
-        {banners.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => setCurrentIndex(index)}
-            className={`w-3 h-3 rounded-full transition-colors ${
-              index === currentIndex ? 'bg-white' : 'bg-white/50'
-            }`}
-            aria-label={`Ver banner ${index + 1}`}
-          />
-        ))}
-      </div>
+      {/* Indicadores de posición - solo si hay más de un banner */}
+      {banners.length > 1 && (
+        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2 z-20">
+          {banners.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentIndex(index)}
+              className={`w-3 h-3 rounded-full transition-colors ${
+                index === currentIndex ? 'bg-white' : 'bg-white/50'
+              }`}
+              aria-label={`Ver banner ${index + 1}`}
+            />
+          ))}
+        </div>
+      )}
       
       {/* Controles de navegación - solo mostrar si hay más de un banner */}
-      {banners.length > 1 && isMounted && (
+      {banners.length > 1 && (
         <>
           <button 
             onClick={() => setCurrentIndex((currentIndex - 1 + banners.length) % banners.length)}
