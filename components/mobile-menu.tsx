@@ -206,20 +206,6 @@ export function MobileMenu({ isOpen, onClose, pathname }: MobileMenuProps) {
             </TabsContent>
           </ScrollArea>
         </Tabs>
-
-        {/* Footer with Contact Button */}
-        <div className="sticky bottom-0 p-4 border-t bg-white shadow-t">
-          <Button className="w-full" disabled={!isMounted}>
-            <Phone className="h-4 w-4 mr-2" />
-            {isMounted ? (
-              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="w-full">
-                Contactar por WhatsApp
-              </a>
-            ) : (
-              "Contactar por WhatsApp"
-            )}
-          </Button>
-        </div>
       </div>
     </div>
   );
