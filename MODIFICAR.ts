@@ -46,37 +46,42 @@ export const BANNERS = [
  * Modifique esta sección para cambiar las categorías destacadas que aparecen en la página principal.
  * Para cada categoría, puede configurar:
  * - Imágenes separadas para móvil y escritorio
- * - ID de la categoría (debe coincidir con la API)
+ * - ID de la categoría general (string descriptivo)
+ * - Array de subcategorías (IDs que coinciden con la API)
  * - Nombre y orden de aparición
  */
 export const FEATURED_CATEGORIES = [
   {
-    id: 101, // Este ID debe coincidir con el de la API
+    id: "apparel",
+    name: 'Apparel',
+    desktopImageUrl: 'https://i.im.ge/2025/03/22/pUz0BW.Chomba-Tilcara-negro-4.jpeg',
+    mobileImageUrl: 'https://i.im.ge/2025/03/22/pUz0BW.Chomba-Tilcara-negro-4.jpeg',
+    order: 1, // Menor número = mayor prioridad
+    subcategories: [127, 117, 128, 169, 99, 151, 131, 221] // Chombas, Remeras, Abrigos, etc.
+  },
+  {
+    id: "writing", 
     name: 'Escritura',
     desktopImageUrl: 'https://i.im.ge/2025/03/22/pUzibr.Rojojpg-1649434185.jpeg',
     mobileImageUrl: 'https://i.im.ge/2025/03/22/pUzibr.Rojojpg-1649434185.jpeg',
-    order: 1 // Menor número = mayor prioridad
+    order: 2,
+    subcategories: [101, 64, 40, 179] // Escritura, Bolígrafos, Artículos de oficina, Cuadernos
   },
   {
-    id: 161,
+    id: "technology",
     name: 'Tecnología',
     desktopImageUrl: 'https://i.im.ge/2025/03/22/pUz9a0.Botella-Jim-Black-1.jpeg',
     mobileImageUrl: 'https://i.im.ge/2025/03/22/pUz9a0.Botella-Jim-Black-1.jpeg',
-    order: 2
+    order: 3,
+    subcategories: [62, 161] // Regalos tecnológicos, Tech
   },
   {
-    id: 131,
-    name: 'Próximos ingresos',
+    id: "drinkware",
+    name: 'Drinkware',
     desktopImageUrl: 'https://i.im.ge/2025/03/22/pUzjAT.Gorra-Ruffino-Bordeaux-Beige-2.jpeg',
     mobileImageUrl: 'https://i.im.ge/2025/03/22/pUzjAT.Gorra-Ruffino-Bordeaux-Beige-2.jpeg',
-    order: 3
-  },
-  {
-    id: 221,
-    name: 'Bolsas, Bolsos, Maletines y Mochilas',
-    desktopImageUrl: 'https://i.im.ge/2025/03/22/pUz0BW.Chomba-Tilcara-negro-4.jpeg',
-    mobileImageUrl: 'https://i.im.ge/2025/03/22/pUz0BW.Chomba-Tilcara-negro-4.jpeg',
-    order: 4
+    order: 4,
+    subcategories: [96, 156, 165] // Termos corporativos, Mates/termos, Hydra go
   }
 ];
 
@@ -180,11 +185,12 @@ interface Banner {
 }
 
 interface FeaturedCategory {
-  id: number;
+  id: string | number;
   name: string;
   desktopImageUrl: string;
   mobileImageUrl: string;
   order: number;
+  subcategories?: (string | number)[];
 }
 
 interface FeaturedProduct {

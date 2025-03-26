@@ -48,6 +48,26 @@ export function CategorySection() {
     );
   };
 
+  // Crear URL con todos los IDs de subcategorías para cada categoría
+  const buildCategoryUrl = (category: typeof FEATURED_CATEGORIES[0]) => {
+    const params = new URLSearchParams();
+    
+    // Si la categoría tiene subcategorías definidas, incluirlas como parámetros
+    if (category.subcategories && category.subcategories.length > 0) {
+      category.subcategories.forEach(subCatId => {
+        params.append('category', subCatId.toString());
+      });
+    } else {
+      // Si no tiene subcategorías, usar el ID de la categoría principal
+      params.append('category', category.id.toString());
+    }
+    
+    // Agregar el término de búsqueda como el nombre de la categoría para mejorar resultados
+    params.append('search', category.name);
+    
+    return `/products?${params.toString()}`;
+  };
+
   return (
     <section className="space-y-6">
       <div className="flex flex-col items-center text-center space-y-2">
@@ -60,7 +80,7 @@ export function CategorySection() {
         {FEATURED_CATEGORIES.map((category) => (
           <Link 
             key={category.id} 
-            href={`/products?search=&category=${category.id}`}
+            href={buildCategoryUrl(category)}
             className="group flex flex-col overflow-hidden rounded-lg border hover:shadow-md transition-all"
           >
             <div className="aspect-[4/3] w-full bg-muted relative">
