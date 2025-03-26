@@ -48,24 +48,19 @@ export interface UnifiedFilters {
 
 /**
  * Helper function to check if cache should be disabled based on URL
- * Updated for better SSR compatibility
+ * Safely handles SSR environments
  */
 function shouldDisableCache(): boolean {
-  // Always safely return false during SSR or when window access is problematic
-  if (typeof window === 'undefined') return false;
+  // Always return false during SSR
+  if (typeof window === 'undefined') {
+    return false;
+  }
   
-  // Use a try/catch to safely handle URL parsing
+  // Only check URL parameters on the client
   try {
-    // Create a separate function to make this more resilient to hydration issues
-    const checkCacheParam = () => {
-      const url = new URL(window.location.href);
-      return url.searchParams.has('nocache');
-    };
-    
-    // Only execute the function if we're in the browser
-    return typeof window !== 'undefined' ? checkCacheParam() : false;
+    const url = new URL(window.location.href);
+    return url.searchParams.has('nocache');
   } catch (e) {
-    // If there's any issue, default to not disabling cache
     return false;
   }
 }
@@ -129,7 +124,7 @@ export async function getUnifiedProducts(filters: UnifiedFilters = {}): Promise<
     // Limitar el tamaño de página para no sobrecargar las APIs
     const limitedFilters = {
       ...filters,
-      limit: Math.min(filters.limit || 16, 24) // Limitar a un máximo de 24 productos por página para mejor rendimiento
+      limit: Math.min(filters.limit || 48, 100) // Aumentar el límite máximo de productos por página
     };
     
     // Timeout más corto para fallar más rápido
@@ -154,7 +149,7 @@ export async function getUnifiedProducts(filters: UnifiedFilters = {}): Promise<
           source: 'zecat' as const 
         }));
         
-        // Aplicar filtros de categoría si es necesario
+        // Aplicar categorías si es necesario
         let finalProducts = products;
         if (filters.categories && filters.categories.length > 0) {
           const categoryIds = new Set(filters.categories.map(cat => String(cat)));
@@ -164,7 +159,7 @@ export async function getUnifiedProducts(filters: UnifiedFilters = {}): Promise<
         }
         
         result = {
-          total_pages: Math.ceil(finalProducts.length / (filters.limit || 16)),
+          total_pages: Math.ceil(finalProducts.length / (filters.limit || 48)),
           count: finalProducts.length,
           products: finalProducts,
           source: 'zecat'
@@ -184,7 +179,7 @@ export async function getUnifiedProducts(filters: UnifiedFilters = {}): Promise<
         }
         
         result = {
-          total_pages: Math.ceil(finalProducts.length / (filters.limit || 16)),
+          total_pages: Math.ceil(finalProducts.length / (filters.limit || 48)),
           count: finalProducts.length,
           products: finalProducts,
           source: 'cdo'
@@ -265,17 +260,30 @@ export async function getUnifiedProducts(filters: UnifiedFilters = {}): Promise<
     // Combinar productos filtrados
     const allProducts = [...filteredZecatProducts, ...filteredCdoProducts];
     
+    // Apply search filtering if needed (additional check to ensure search is applied consistently)
+    let searchFilteredProducts = allProducts;
+    if (filters.search) {
+      const searchTerm = filters.search.toLowerCase();
+      searchFilteredProducts = allProducts.filter(product => 
+        product.name.toLowerCase().includes(searchTerm)
+      );
+    }
+    
     // Aplicar paginación
-    const pageSize = filters.limit || 16;
+    const pageSize = filters.limit || 48;
     const currentPage = filters.page || 1;
     
     // Calcular páginas totales
-    const totalCount = allProducts.length;
-    const totalPages = Math.ceil(totalCount / pageSize);
+    const totalCount = searchFilteredProducts.length;
+    // Asegurar que totalPages es al menos 1 para evitar páginas vacías
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+    
+    // Asegurar que la página actual es válida
+    const validCurrentPage = Math.min(currentPage, totalPages);
     
     // Paginar resultados combinados
-    const startIndex = (currentPage - 1) * pageSize;
-    const paginatedProducts = allProducts.slice(startIndex, startIndex + pageSize);
+    const startIndex = (validCurrentPage - 1) * pageSize;
+    const paginatedProducts = searchFilteredProducts.slice(startIndex, startIndex + pageSize);
     
     // Crear respuesta unificada
     const result = {

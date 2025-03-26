@@ -32,31 +32,37 @@ export default function ProductListingClient({
   categoryParam,
   search
 }: ProductListingClientProps) {
-  const [isClient, setIsClient] = useState(false);
+  // Use a state to track if component is mounted instead of "isClient"
+  const [isMounted, setIsMounted] = useState(false);
   
+  // Set mounted state once component is mounted on client
   useEffect(() => {
-    setIsClient(true);
+    setIsMounted(true);
   }, []);
   
   // Función para construir la URL de paginación con múltiples categorías
   const buildPaginationUrl = (pageNum: number) => {
-    let url = `/products?page=${pageNum}`;
+    // Create URLSearchParams to handle parameters properly
+    const params = new URLSearchParams();
     
-    // Agregar categorías seleccionadas
+    // Add page parameter
+    params.set('page', pageNum.toString());
+    
+    // Add category parameters
     if (Array.isArray(categoryParam)) {
       categoryParam.forEach(cat => {
-        url += `&category=${cat}`;
+        params.append('category', cat);
       });
     } else if (categoryParam) {
-      url += `&category=${categoryParam}`;
+      params.set('category', categoryParam);
     }
     
-    // Agregar término de búsqueda si existe
+    // Add search parameter if it exists
     if (search) {
-      url += `&search=${encodeURIComponent(search)}`;
+      params.set('search', search);
     }
     
-    return url;
+    return `/products?${params.toString()}`;
   };
 
   // Pagination pages to display
@@ -72,7 +78,7 @@ export default function ProductListingClient({
     }
   };
 
-  // Server/client consistent rendering
+  // Create pagination links
   const renderPagination = () => {
     if (totalPages <= 1) return null;
     
@@ -114,8 +120,20 @@ export default function ProductListingClient({
     );
   };
 
-  // Shared content for both server and client rendering
-  const renderContent = () => (
+  // Return null during SSR to prevent hydration mismatch
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  // If current page is greater than total pages and total pages > 0, redirect to the last page
+  useEffect(() => {
+    if (isMounted && totalPages > 0 && currentPage > totalPages) {
+      window.location.href = buildPaginationUrl(totalPages);
+    }
+  }, [isMounted, currentPage, totalPages]);
+
+  // The client-side only render 
+  return (
     <>
       <div className="flex items-center justify-between mb-6">
         <p className="text-sm text-muted-foreground">
@@ -128,10 +146,10 @@ export default function ProductListingClient({
           <div className="max-w-sm mx-auto">
             <h3 className="text-lg font-semibold mb-2">No se encontraron productos</h3>
             <p className="text-muted-foreground mb-4">
-              No hay productos que coincidan con los filtros seleccionados.
-              {isClient && " Intenta con otros filtros o busca términos más generales."}
+              No hay productos que coincidan con las categorías seleccionadas.
+              {isMounted && " Intenta con otras categorías o busca términos más generales."}
             </p>
-            {isClient && (
+            {isMounted && (
               <Link href="/products">
                 <Button variant="outline">Ver todos los productos</Button>
               </Link>
@@ -146,7 +164,4 @@ export default function ProductListingClient({
       )}
     </>
   );
-
-  // Use the same structure for both server and client rendering to avoid hydration errors
-  return renderContent();
 } 

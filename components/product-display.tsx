@@ -116,8 +116,8 @@ export default function ProductDisplay({ product, productId }: ProductDisplayPro
               <TabsContent value="details" className="pt-4">
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div className="font-medium">ID de Producto</div>
-                    <div>{zecatProduct.id || 'N/A'}</div>
+                    <div className="font-medium">Referencia</div>
+                    <div>Z-{zecatProduct.id || 'N/A'}</div>
                     
                     <div className="font-medium">Categorías</div>
                     <div>
@@ -253,8 +253,8 @@ export default function ProductDisplay({ product, productId }: ProductDisplayPro
               <TabsContent value="details" className="pt-4">
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div className="font-medium">ID de Producto</div>
-                    <div>{cdoProduct.id || 'N/A'}</div>
+                    <div className="font-medium">Referencia</div>
+                    <div>C-{cdoProduct.id || 'N/A'}</div>
                     
                     <div className="font-medium">Código</div>
                     <div>{cdoProduct.code || 'N/A'}</div>

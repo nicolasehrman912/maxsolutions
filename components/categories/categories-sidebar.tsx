@@ -115,7 +115,7 @@ export function CategoriesSidebar() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Filter className="h-4 w-4" />
-            <h2 className="font-medium">Filtros</h2>
+            <h2 className="font-medium">Categorías</h2>
           </div>
         </div>
         
@@ -148,7 +148,7 @@ export function CategoriesSidebar() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4" />
-          <h2 className="font-medium">Filtros</h2>
+          <h2 className="font-medium">Categorías</h2>
         </div>
         
         {activeFilters.length > 0 && (
@@ -158,7 +158,7 @@ export function CategoriesSidebar() {
             onClick={clearFilters} 
             className="h-8 px-2 text-xs"
           >
-            Limpiar filtros
+            Limpiar categorías
           </Button>
         )}
       </div>

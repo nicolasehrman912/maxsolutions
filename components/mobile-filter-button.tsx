@@ -19,7 +19,7 @@ export function MobileFilterButton() {
         onClick={() => setIsMenuOpen(true)}
       >
         <Filter className="h-4 w-4 mr-2" />
-        Filtros
+        Categorías
       </Button>
 
       <MobileMenu

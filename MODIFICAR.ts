@@ -126,7 +126,7 @@ export const WHATSAPP = {
     general: 'Hola, me gustaría solicitar información sobre sus productos.',
     
     // Mensaje para consulta sobre un producto específico (se concatenará con el nombre e ID)
-    producto: 'Hola, estoy interesado en el producto "[NOMBRE]" (ID: [ID]). ¿Podrías proporcionarme más información?',
+    producto: 'Hola, estoy interesado en el producto "[NOMBRE]" (Ref: [ID]). ¿Podrías proporcionarme más información?',
     
     // Mensaje para consulta sobre un pedido
     pedido: 'Hola, quisiera realizar un pedido. Me interesan los siguientes productos:',
@@ -296,7 +296,14 @@ export function generarUrlWhatsApp(
       mensaje = mensaje.replace('[NOMBRE]', datos.nombre);
     }
     if (datos.id) {
-      mensaje = mensaje.replace('[ID]', datos.id.toString());
+      // Ocultar información del proveedor en el ID
+      let maskedId = datos.id.toString();
+      if (maskedId.includes('zecat_')) {
+        maskedId = maskedId.replace('zecat_', 'Z-');
+      } else if (maskedId.includes('cdo_')) {
+        maskedId = maskedId.replace('cdo_', 'C-');
+      }
+      mensaje = mensaje.replace('[ID]', maskedId);
     }
   }
   

@@ -115,7 +115,7 @@ export function MobileMenu({ isOpen, onClose, pathname }: MobileMenuProps) {
               </TabsTrigger>
               <TabsTrigger value="filters" className="flex-1 data-[state=active]:bg-white">
                 <Filter className="h-4 w-4 mr-2" />
-                Filtros
+                Categorías
               </TabsTrigger>
             </TabsList>
           </div>

@@ -9,8 +9,9 @@ import { CategoriesSidebar } from "@/components/categories/categories-sidebar"
 import { formatCategories, getAllSubcategoryIds } from "@/lib/categories"
 import ProductListingClient from "@/components/product-listing-client"
 import { MobileFilterButton } from "@/components/mobile-filter-button"
+import { ClientOnly } from "@/components/client-only"
 
-export const dynamic = 'force-dynamic'; // Forzar renderizado dinámico para los filtros
+export const dynamic = 'force-dynamic'; // Forzar renderizado dinámico para las categorías
 export const revalidate = 3600; // Revalidar esta página cada hora
 
 interface SearchParams {
@@ -32,7 +33,7 @@ export default async function ProductsPage({
   
   // Parse search parameters
   const page = Number(params.page) || 1;
-  const limit = Number(params.limit) || 16;
+  const limit = Number(params.limit) || 48;
   
   // Get category filter
   const categoryParam = params.category;
@@ -167,14 +168,16 @@ export default async function ProductsPage({
             </div>
             
             <Suspense fallback={<ProductsPageSkeleton />}>
-              <ProductListingClient 
-                products={products}
-                totalPages={productsResponse.total_pages}
-                totalProducts={productsResponse.count}
-                currentPage={page}
-                categoryParam={categoryParam}
-                search={search}
-              />
+              <ClientOnly>
+                <ProductListingClient 
+                  products={products}
+                  totalPages={productsResponse.total_pages}
+                  totalProducts={productsResponse.count}
+                  currentPage={page}
+                  categoryParam={categoryParam}
+                  search={search}
+                />
+              </ClientOnly>
             </Suspense>
           </div>
         </div>
