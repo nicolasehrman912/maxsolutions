@@ -101,6 +101,11 @@ export const FEATURED_PRODUCTS = [
     source: 'cdo',
     order: 1 
   },
+  { 
+    id: 3898, 
+    source: 'zecat',
+    order: 2 
+  },
   // Añada más productos aquí según necesite
 ];
 
