@@ -70,8 +70,8 @@ export const FEATURED_CATEGORIES = [
   {
     id: "technology",
     name: 'Tecnología',
-    desktopImageUrl: 'https://i.im.ge/2025/03/22/pUz9a0.Botella-Jim-Black-1.jpeg',
-    mobileImageUrl: 'https://i.im.ge/2025/03/22/pUz9a0.Botella-Jim-Black-1.jpeg',
+    desktopImageUrl: 'https://i.im.ge/2025/03/28/p5jbIy.Portada-Shield-SC.jpeg',
+    mobileImageUrl: 'https://i.im.ge/2025/03/28/p5jbIy.Portada-Shield-SC.jpeg',
     order: 3,
     subcategories: [62, 161] // Regalos tecnológicos, Tech
   },
