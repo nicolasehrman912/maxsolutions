@@ -78,8 +78,8 @@ export const FEATURED_CATEGORIES = [
   {
     id: "drinkware",
     name: 'Drinkware',
-    desktopImageUrl: 'https://i.im.ge/2025/03/22/pUzjAT.Gorra-Ruffino-Bordeaux-Beige-2.jpeg',
-    mobileImageUrl: 'https://i.im.ge/2025/03/22/pUzjAT.Gorra-Ruffino-Bordeaux-Beige-2.jpeg',
+    desktopImageUrl: 'https://i.im.ge/2025/03/22/pUz9a0.Botella-Jim-Black-1.jpeg',
+    mobileImageUrl: 'https://i.im.ge/2025/03/22/pUz9a0.Botella-Jim-Black-1.jpeg',
     order: 4,
     subcategories: [96, 156, 165] // Termos corporativos, Mates/termos, Hydra go
   }
