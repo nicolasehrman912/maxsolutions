@@ -28,6 +28,14 @@ function buildQueryParams(filters: ProductFilters): string {
     });
   }
   
+  // Handle product IDs for filtering specific products
+  if (filters.ids && filters.ids.length > 0) {
+    filters.ids.forEach(id => {
+      params.append('ids[]', id.toString());
+    });
+    console.log(`Adding product IDs filter for: ${filters.ids.join(', ')}`);
+  }
+  
   return params.toString();
 }
 

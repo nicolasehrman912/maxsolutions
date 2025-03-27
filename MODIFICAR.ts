@@ -116,7 +116,6 @@ export const FEATURED_PRODUCTS = [
     source: 'zecat',
     order: 4 
   },
-  // Añada más productos aquí según necesite
 ];
 
 /**

@@ -1,26 +1,36 @@
 import { ProductGrid } from "@/components/product-grid"
-import { getProducts } from "@/lib/api/zecat"
+import { getProducts, getProductById } from "@/lib/api/zecat"
 import { getCDOProductById } from "@/lib/api/cdo"
 import { GenericProduct, CDOProduct } from "@/lib/api/types"
 import { FEATURED_PRODUCTS } from "@/MODIFICAR"
 import { createCompositeId } from "@/lib/api/unified"
 
+// Helper function to directly fetch a Zecat product by ID
+async function fetchZecatProductById(id: number): Promise<GenericProduct | null> {
+  try {
+    console.log(`Directly fetching Zecat product with ID: ${id}`);
+    const product = await getProductById(id.toString());
+    return product;
+  } catch (error) {
+    console.error(`Failed to fetch Zecat product ${id}:`, error);
+    return null;
+  }
+}
+
 async function fetchFeaturedProducts(productIds: number[]): Promise<GenericProduct[]> {
   try {
-    // First try to fetch only specified products
-    const response = await getProducts({ 
-      ids: productIds,
-      limit: productIds.length * 2 // Set limit high enough to get all IDs
-    });
+    console.log("Attempting to fetch Zecat products with IDs:", productIds);
     
-    // Extra safety: explicitly filter to ONLY include products with IDs in our list
-    const filteredProducts = response.generic_products.filter(product => 
-      productIds.includes(parseInt(product.id))
-    );
+    // Instead of bulk fetching with IDs (which may not work properly), 
+    // fetch each product individually using the direct endpoint
+    const productsPromises = productIds.map(id => fetchZecatProductById(id));
+    const products = await Promise.all(productsPromises);
     
-    console.log(`Filtered to ${filteredProducts.length} specific products from ${response.generic_products.length} returned products`);
+    // Filter out any null results
+    const validProducts = products.filter(Boolean) as GenericProduct[];
+    console.log(`Successfully fetched ${validProducts.length} out of ${productIds.length} Zecat products directly`);
     
-    return filteredProducts;
+    return validProducts;
   } catch (error) {
     console.error("Error fetching featured products:", error);
     return [];
@@ -29,6 +39,8 @@ async function fetchFeaturedProducts(productIds: number[]): Promise<GenericProdu
 
 async function fetchCDOProducts(productIds: number[]): Promise<(CDOProduct | null)[]> {
   try {
+    console.log("Attempting to fetch CDO products with IDs:", productIds);
+    
     // Fetch each CDO product individually and handle errors
     const productsPromises = productIds.map(async (id) => {
       try {
@@ -52,21 +64,26 @@ async function fetchCDOProducts(productIds: number[]): Promise<(CDOProduct | nul
 export async function FeaturedProducts() {
   // Use featured products directly from configuration
   const featuredProducts = FEATURED_PRODUCTS;
+  console.log("Featured products configuration:", featuredProducts);
   
   // Separate products by source
   const zecatProductIds = featuredProducts
-    .filter(p => p.source !== 'cdo')
+    .filter(p => p.source === 'zecat' || !p.source) // Include products with no source specified
     .map(p => p.id);
     
   const cdoProductIds = featuredProducts
     .filter(p => p.source === 'cdo')
     .map(p => p.id);
   
+  console.log(`Fetching ${zecatProductIds.length} Zecat products and ${cdoProductIds.length} CDO products`);
+  
   // Fetch products from both sources in parallel
   const [zecatProducts, cdoProducts] = await Promise.all([
     zecatProductIds.length > 0 ? fetchFeaturedProducts(zecatProductIds) : [],
     cdoProductIds.length > 0 ? fetchCDOProducts(cdoProductIds) : []
   ]);
+  
+  console.log(`Successfully fetched ${zecatProducts.length} Zecat products and ${cdoProducts.filter(Boolean).length} CDO products`);
   
   // Transform all products to match our product structure
   const transformedProducts = [
@@ -76,10 +93,10 @@ export async function FeaturedProducts() {
         id: createCompositeId('zecat', product.id),
         name: product.name,
         price: product.price,
-        image: product.images[0]?.image_url || "/placeholder.svg?height=400&width=300",
-        category: product.families[0]?.description || "general",
+        image: product.images?.[0]?.image_url || "/placeholder.svg?height=400&width=300",
+        category: product.families?.[0]?.description || "general",
         isNew: product.stock > 0,
-        totalStock: product.stock,
+        totalStock: product.products?.reduce((sum, v) => sum + (v.stock || 0), 0) || 0,
         source: 'zecat' as const
       };
     }),
@@ -88,10 +105,12 @@ export async function FeaturedProducts() {
     ...cdoProducts
       .filter(Boolean) // Remove nulls
       .map((product) => {
+        // Find the corresponding featured product config
         const featuredProduct = featuredProducts.find(fp => fp.id === product?.id);
+        // Use product data for display
         return {
           id: createCompositeId('cdo', product!.id),
-          name: product!.name || featuredProduct?.description || `Producto ${product!.id}`,
+          name: product!.name || `Producto ${product!.id}`,
           image: product!.variants?.[0]?.picture?.original || "/placeholder.svg?height=400&width=300",
           category: product!.categories?.[0]?.name || "general",
           isNew: true,
@@ -101,17 +120,17 @@ export async function FeaturedProducts() {
       })
   ];
 
+  console.log(`Transformed ${transformedProducts.length} products total for display`);
+
   // Sort products according to the order in FEATURED_PRODUCTS
   const sortedProducts = [...transformedProducts].sort((a, b) => {
-    const productA = featuredProducts.find(p => {
-      const idPart = typeof a.id === 'string' ? a.id.split('_')[1] : a.id.toString();
-      return p.id.toString() === idPart;
-    });
+    // Extract the ID part from the composite ID (e.g., "zecat_123" -> "123")
+    const aIdPart = typeof a.id === 'string' ? a.id.split('_')[1] : String(a.id);
+    const bIdPart = typeof b.id === 'string' ? b.id.split('_')[1] : String(b.id);
     
-    const productB = featuredProducts.find(p => {
-      const idPart = typeof b.id === 'string' ? b.id.split('_')[1] : b.id.toString();
-      return p.id.toString() === idPart;
-    });
+    // Find the corresponding featured product config
+    const productA = featuredProducts.find(p => String(p.id) === aIdPart);
+    const productB = featuredProducts.find(p => String(p.id) === bIdPart);
     
     return (productA?.order || 0) - (productB?.order || 0);
   });
