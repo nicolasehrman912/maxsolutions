@@ -106,6 +106,16 @@ export const FEATURED_PRODUCTS = [
     source: 'zecat',
     order: 2 
   },
+  { 
+    id: 5214, 
+    source: 'zecat',
+    order: 3 
+  },
+  { 
+    id: 3936, 
+    source: 'zecat',
+    order: 4 
+  },
   // Añada más productos aquí según necesite
 ];
 
