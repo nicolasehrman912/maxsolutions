@@ -43,6 +43,13 @@ export function formatCategories(): CategoryData[] {
       ],
     },
     {
+      id: "bolsos",
+      name: "Bolsos y Mochilas",
+      subcategories: [
+        { id: "98", name: "Bolsos y mochilas corporativos con logo", count: 98 },
+      ],
+    },
+    {
       id: "technology",
       name: "Tecnología",
       subcategories: [
