@@ -62,8 +62,7 @@ export function CategorySection() {
       params.append('category', category.id.toString());
     }
     
-    // Agregar el término de búsqueda como el nombre de la categoría para mejorar resultados
-    params.append('search', category.name);
+    // No agregar el término de búsqueda para evitar limitar los resultados
     
     return `/products?${params.toString()}`;
   };
