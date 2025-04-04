@@ -5,7 +5,10 @@ import {
   ProductFilters
 } from './types';
 
-const API_BASE_URL = 'https://api.zecatdifapro.com';
+const API_BASE_URL = 'https://api.zecat.com/v1';
+
+// Token will be stored in environment variable
+const API_TOKEN = process.env.NEXT_PUBLIC_ZECAT_API_TOKEN || '';
 
 /**
  * Helper function to build query parameters for API requests
@@ -40,6 +43,16 @@ function buildQueryParams(filters: ProductFilters): string {
 }
 
 /**
+ * Get request headers with authentication
+ */
+function getHeaders(): HeadersInit {
+  return {
+    'Authorization': `Bearer ${API_TOKEN}`,
+    'Content-Type': 'application/json'
+  };
+}
+
+/**
  * Fetch families (categories)
  */
 export async function getFamilies(): Promise<FamiliesResponse> {
@@ -71,6 +84,7 @@ export async function getFamilies(): Promise<FamiliesResponse> {
       
       const response = await fetch(`${API_BASE_URL}/family/`, {
         signal: controller.signal,
+        headers: getHeaders(),
         // Usar cache con revalidación cada 4 horas
         next: { 
           revalidate: 14400 
@@ -146,6 +160,7 @@ export async function getProducts(filters: ProductFilters = {}): Promise<Generic
       // Usar caché para mejorar rendimiento
       const response = await fetch(url, {
         signal: controller.signal,
+        headers: getHeaders(),
         // Usar caché con revalidación para evitar llamadas innecesarias
         next: {
           revalidate: 14400, // 4 horas
@@ -197,7 +212,10 @@ export async function getProducts(filters: ProductFilters = {}): Promise<Generic
  */
 export async function searchProducts(name: string): Promise<GenericProductsResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/generic_product/autocomplete?name=${encodeURIComponent(name)}`);
+    const response = await fetch(
+      `${API_BASE_URL}/generic_product/autocomplete?name=${encodeURIComponent(name)}`, 
+      { headers: getHeaders() }
+    );
     
     if (!response.ok) {
       throw new Error(`Failed to search products: ${response.status}`);
@@ -216,12 +234,18 @@ export async function searchProducts(name: string): Promise<GenericProductsRespo
 export async function getProductById(id: string): Promise<GenericProduct> {
   try {
     // First try to get the product details directly
-    const response = await fetch(`${API_BASE_URL}/generic_product/${id}`);
+    const response = await fetch(
+      `${API_BASE_URL}/generic_product/${id}`,
+      { headers: getHeaders() }
+    );
     
     if (!response.ok) {
       // If we can't get the product directly, search for it in the product list
       console.log(`Direct product fetch failed for ID ${id}, trying to find it in the product list`);
-      const productsResponse = await fetch(`${API_BASE_URL}/generic_product?limit=1000`);
+      const productsResponse = await fetch(
+        `${API_BASE_URL}/generic_product?limit=1000`,
+        { headers: getHeaders() }
+      );
       
       if (!productsResponse.ok) {
         throw new Error(`Failed to fetch products: ${productsResponse.status}`);
