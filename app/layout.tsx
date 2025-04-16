@@ -25,19 +25,19 @@ export default function RootLayout({
     <html lang="es">
       <body className={inter.className}>
         <Script
-  src="https://www.googletagmanager.com/gtag/js?id=G-NHC34QD1LV"
-  strategy="afterInteractive"
-/>
-<Script id="google-analytics" strategy="afterInteractive">
-  {`
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-NHC34QD1LV', {
-      page_path: window.location.pathname,
-    });
-  `}
-</Script>
+          src="https://www.googletagmanager.com/gtag/js?id=G-NHC34QD1LV"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-NHC34QD1LV', {
+              page_path: window.location.pathname,
+            });
+          `}
+        </Script>
 
         <ClientProvider>
           <CartProvider>
