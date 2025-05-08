@@ -24,8 +24,8 @@
 export const BANNERS = [
   {
     id: 'banner-nuevos-productos',
-    desktopImageUrl: 'https://i.im.ge/2025/03/22/pUzrW8.Banner-Web-Nuevos-Productos-Pampero-1580x700px.webp',
-    mobileImageUrl: 'https://i.im.ge/2025/03/22/pUzXO9.Banner-Mobile-Nuevos-Productos-Pampero-400x480px.webp',
+    desktopImageUrl: 'https://zecat-user-images-prod.s3.amazonaws.com/generic_products/Portada%20campera%20volley%20carrousel%202%2Cjpg-1654806046.jpg',
+    mobileImageUrl: 'https://zecat-user-images-prod.s3.amazonaws.com/generic_products/Portada%20campera%20volley%20carrousel%202%2Cjpg-1654806046.jpg',
     linkUrl: '/products',
     priority: 0, // Menor número = mayor prioridad
     active: true // true = se muestra, false = no se muestra
