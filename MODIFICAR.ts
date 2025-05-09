@@ -62,24 +62,24 @@ export const FEATURED_CATEGORIES = [
   {
     id: "writing", 
     name: 'Escritura',
-    desktopImageUrl: 'https://i.im.ge/2025/03/22/pUzibr.Rojojpg-1649434185.jpeg',
-    mobileImageUrl: 'https://i.im.ge/2025/03/22/pUzibr.Rojojpg-1649434185.jpeg',
+    desktopImageUrl: 'https://zecat-user-images-prod.s3.amazonaws.com/generic_products/PortadawebCuadernoUniversityNovedad-1738769327.webp',
+    mobileImageUrl: 'https://zecat-user-images-prod.s3.amazonaws.com/generic_products/PortadawebCuadernoUniversityNovedad-1738769327.webp',
     order: 2,
     subcategories: [101, 64, 40, 179] // Escritura, Bolígrafos, Artículos de oficina, Cuadernos
   },
   {
     id: "technology",
     name: 'Tecnología',
-    desktopImageUrl: 'https://i.im.ge/2025/03/28/p5jbIy.Portada-Shield-SC.jpeg',
-    mobileImageUrl: 'https://i.im.ge/2025/03/28/p5jbIy.Portada-Shield-SC.jpeg',
+    desktopImageUrl: 'https://zecat-user-images-prod.s3.amazonaws.com/generic_products/Portada_Shield-SC%2Cjpg17-1708952737.jpg',
+    mobileImageUrl: 'https://zecat-user-images-prod.s3.amazonaws.com/generic_products/Portada_Shield-SC%2Cjpg17-1708952737.jpg',
     order: 3,
     subcategories: [62, 161] // Regalos tecnológicos, Tech
   },
   {
     id: "drinkware",
     name: 'Drinkware',
-    desktopImageUrl: 'https://i.im.ge/2025/03/22/pUz9a0.Botella-Jim-Black-1.jpeg',
-    mobileImageUrl: 'https://i.im.ge/2025/03/22/pUz9a0.Botella-Jim-Black-1.jpeg',
+    desktopImageUrl: 'https://zecat-user-images-prod.s3.amazonaws.com/generic_products/Portadawebjarroosloreingreso-1742908056.webp',
+    mobileImageUrl: 'https://zecat-user-images-prod.s3.amazonaws.com/generic_products/Portadawebjarroosloreingreso-1742908056.webp',
     order: 4,
     subcategories: [96, 156, 165] // Termos corporativos, Mates/termos, Hydra go
   }
