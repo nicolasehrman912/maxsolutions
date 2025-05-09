@@ -97,8 +97,8 @@ export const FEATURED_CATEGORIES = [
  */
 export const FEATURED_PRODUCTS = [
   { 
-    id: 1727, 
-    source: 'cdo',
+    id: 5258, 
+    source: 'zecat',
     order: 1 
   },
   { 
