@@ -1,44 +1,55 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import Image from "next/image"
 
-export function ClientsSection() {
-  const [isMounted, setIsMounted] = useState(false)
-  
-  // Set mounted state to true when component is mounted on client
-  useEffect(() => {
-    setIsMounted(true)
-  }, [])
-  
-  const clients = [
-    { id: 1, name: "Cliente 1", logo: "/logo/nikon.png" },
-    { id: 2, name: "Cliente 2", logo: "/logo/tigre.png" },
-    { id: 3, name: "Cliente 3", logo: "/logo/vl.png" },
-    { id: 4, name: "Cliente 4", logo: "/logo/ktl.jpg" },
-    { id: 5, name: "Cliente 5", logo: "/logo/multipoint.png" },
-  ];
+const clients = [
+  { name: "Nikon",       logo: "/logo/nikon.png" },
+  { name: "Tigre",       logo: "/logo/tigre.png" },
+  { name: "VL",          logo: "/logo/vl.png" },
+  { name: "KTL",         logo: "/logo/ktl.jpg" },
+  { name: "Multipoint",  logo: "/logo/multipoint.png" },
+  { name: "Banchero",    logo: "/logo/banchero.svg" },
+  { name: "Lesko",       logo: "/logo/lesko.jpg" },
+  { name: "Fecofar",     logo: "/logo/logo fecofar.gif" },
+  { name: "Madic",       logo: "/logo/Logo madic.png" },
+  { name: "OpenFarma",   logo: "/logo/logo openfarma.webp" },
+  { name: "ITBA",        logo: "/logo/LOGO-ITBA-1024x701.jpg" },
+  { name: "TIP Travel",  logo: "/logo/Logo-Tip-Travel_-Final_-02-768x767.jpg" },
+]
 
+const allClients = [...clients, ...clients, ...clients]
+
+export function ClientsSection() {
   return (
-    <section className="py-12">
-      <div className="container mx-auto px-4">
-        <h2 className="text-3xl font-bold text-center mb-8">Nuestros Clientes</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-6">
-          {clients.map((client) => (
-            <div key={client.id} className="flex items-center justify-center">
+    <section className="py-16 bg-[#f7f8fa] border-t border-border">
+      <div className="container mx-auto px-4 mb-12">
+        <div className="text-center">
+          <span className="section-label mb-2 block">Confianza empresarial</span>
+          <h2 className="font-display text-2xl md:text-3xl font-bold text-navy">
+            Empresas que confían en nosotros
+          </h2>
+        </div>
+      </div>
+
+      <div className="overflow-hidden">
+        <div className="flex animate-scroll-left gap-16 w-max py-4">
+          {allClients.map((client, i) => (
+            <div
+              key={`${client.name}-${i}`}
+              className="flex items-center justify-center shrink-0 hover:scale-105 transition-transform duration-300"
+              style={{ width: '180px', height: '80px' }}
+            >
               <Image
                 src={client.logo}
                 alt={client.name}
-                width={150}
-                height={100}
-                className="object-contain"
-                // Add loading priority to ensure all images load the same way server/client
-                priority={isMounted ? undefined : true}
+                width={140}
+                height={64}
+                className="object-contain max-h-16 w-auto"
               />
             </div>
           ))}
         </div>
       </div>
     </section>
-  );
-} 
+  )
+}

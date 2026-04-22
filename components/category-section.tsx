@@ -1,107 +1,94 @@
-'use client';
+"use client"
 
 import Image from "next/image"
 import Link from "next/link"
 import { FEATURED_CATEGORIES } from "@/MODIFICAR"
+import { ArrowRight } from "lucide-react"
 import { useEffect, useState } from "react"
-// Remove dynamic imports
-// import { getCDOCategories } from "@/lib/api/cdo"
-// import { getStoredCategories } from "@/lib/local-storage"
+
+/**
+ * Mapeo de ID de categoría featured → slug de URL
+ * Esto asegura que las cards del home generen URLs como /products?category=drinkware
+ * en vez de /products?category=96&category=156 (que no mapea CDO correctamente)
+ */
+const CATEGORY_ID_TO_SLUG: Record<string, string> = {
+  "apparel":    "apparel",
+  "writing":    "writing",
+  "technology": "technology",
+  "drinkware":  "drinkware",
+  "bolsos":     "bolsos",
+  "hogar-tiempo-libre": "hogar-tiempo-libre",
+  "gorros":     "gorros",
+  "paraguas":   "paraguas",
+  "llaveros":   "llaveros",
+  "deportes":   "deportes",
+  "agro":       "agro",
+  "packaging":  "packaging",
+}
 
 export function CategorySection() {
-  // Estado para detectar si estamos en un dispositivo móvil
-  const [isMobile, setIsMobile] = useState(false);
-  // Estado para rastrear si el componente está montado en el cliente
-  const [isMounted, setIsMounted] = useState(false);
+  const [isMounted, setIsMounted] = useState(false)
+  useEffect(() => { setIsMounted(true) }, [])
 
-  // Detectar si estamos en móvil y marcar como montado cuando el componente se monta
-  useEffect(() => {
-    setIsMounted(true);
-    
-    const checkIfMobile = () => {
-      setIsMobile(window.innerWidth < 768); // Considerar móvil en menos de 768px
-    };
-    
-    // Verificar inicialmente
-    checkIfMobile();
-    
-    // Agregar listener para cambios de tamaño
-    window.addEventListener('resize', checkIfMobile);
-    
-    // Limpiar listener al desmontar
-    return () => window.removeEventListener('resize', checkIfMobile);
-  }, []);
-
-  // Función para renderizar las imágenes de categoría de manera consistente
-  const renderCategoryImage = (category: typeof FEATURED_CATEGORIES[0]) => {
-    // Usar la imagen de escritorio como fallback inicial para SSR y durante la hidratación
-    const imageUrl = isMounted && isMobile ? category.mobileImageUrl : category.desktopImageUrl;
-    
-    return (
-      <Image
-        src={imageUrl}
-        alt={category.name}
-        fill
-        className="object-cover"
-        sizes="(max-width: 768px) 50vw, 25vw"
-      />
-    );
-  };
-
-  // Crear URL con todos los IDs de subcategorías para cada categoría
   const buildCategoryUrl = (category: typeof FEATURED_CATEGORIES[0]) => {
-    const params = new URLSearchParams();
-    
-    // Si la categoría tiene subcategorías definidas, incluirlas como parámetros
-    if (category.subcategories && category.subcategories.length > 0) {
-      category.subcategories.forEach(subCatId => {
-        params.append('category', subCatId.toString());
-      });
-    } else {
-      // Si no tiene subcategorías, usar el ID de la categoría principal
-      params.append('category', category.id.toString());
-    }
-    
-    // No agregar el término de búsqueda para evitar limitar los resultados
-    
-    return `/products?${params.toString()}`;
-  };
+    const id = category.id.toString()
+    // Usar slug si existe, sino usar el ID directo
+    const slug = CATEGORY_ID_TO_SLUG[id] || id
+    return `/products?category=${slug}`
+  }
 
   return (
-    <section className="space-y-6">
-      <div className="flex flex-col items-center text-center space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Categorías Destacadas</h2>
-        <p className="text-muted-foreground max-w-[600px]">
-          Explora nuestras categorías de productos promocionales
-        </p>
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
-        {FEATURED_CATEGORIES.map((category) => (
-          <Link 
-            key={category.id} 
-            href={buildCategoryUrl(category)}
-            className="group flex flex-col overflow-hidden rounded-lg border hover:shadow-md transition-all"
+    <section className="py-16 bg-white">
+      <div className="container mx-auto px-4">
+        <div className="mb-10 text-center">
+          <span className="section-label mb-2 block">Nuestro catálogo</span>
+          <h2 className="font-display text-3xl md:text-4xl font-bold text-navy">
+            Explorá por categoría
+          </h2>
+        </div>
+
+        {/* 4 cards IGUALES en fila — estilo Louis Vuitton */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+          {FEATURED_CATEGORIES.map((category) => (
+            <Link
+              key={category.id}
+              href={buildCategoryUrl(category)}
+              className="group relative overflow-hidden block bg-muted"
+              style={{ aspectRatio: '3/4' }}
+            >
+              <Image
+                src={category.desktopImageUrl}
+                alt={category.name}
+                fill
+                className="object-cover transition-transform duration-700 group-hover:scale-105"
+                sizes="(max-width: 768px) 50vw, 25vw"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 p-4 md:p-5">
+                <h3 className="font-display font-bold text-white text-lg md:text-xl leading-tight mb-1">
+                  {category.name}
+                </h3>
+                <div className="flex items-center gap-1.5 text-white/65 text-xs font-body transition-all duration-300 group-hover:text-gold-light group-hover:gap-2.5">
+                  <span>Ver productos</span>
+                  <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-1" />
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+
+        <div className="mt-10 text-center">
+          <Link
+            href="/products"
+            className="inline-flex items-center gap-2 border-2 border-navy text-navy hover:bg-navy hover:text-white font-semibold px-10 py-3 transition-all text-sm font-body tracking-widest uppercase"
           >
-            <div className="aspect-[4/3] w-full bg-muted relative">
-              {renderCategoryImage(category)}
-            </div>
-            <div className="p-3 text-center">
-              <h3 className="text-sm font-semibold">{category.name}</h3>
-              <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
-                {`Ver productos de ${category.name}`}
-              </p>
-            </div>
-          </Link>
-        ))}
-      </div>
-      <div className="text-center">
-        <Link href="/products?search=">
-          <button className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
             Ver todas las categorías
-          </button>
-        </Link>
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
       </div>
     </section>
   )
 }
+
 

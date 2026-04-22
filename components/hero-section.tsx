@@ -1,154 +1,128 @@
 "use client"
 
-import Image from "next/image"
 import Link from "next/link"
-import { obtenerBannersPorUbicacion } from "@/MODIFICAR"
-import { useEffect, useState, useCallback } from "react"
+import Image from "next/image"
+import { ArrowRight } from "lucide-react"
+import { useState, useEffect } from "react"
+
+/**
+ * HERO SECTION — Estilo Louis Vuitton
+ *
+ * Para agregar tu VIDEO cuando lo tengas:
+ * 1. Colocá el archivo en /public/video/hero.mp4
+ * 2. Cambiá VIDEO_SRC por "/video/hero.mp4"
+ *
+ * Para usar una FOTO de fondo:
+ * 1. Colocá el archivo en /public/ (ej: hero.jpg)
+ * 2. Cambiá IMAGE_SRC por "/hero.jpg"
+ * 3. Si hay video, el video tiene prioridad sobre la foto.
+ */
+const VIDEO_SRC = "/video/hero.mp4" // <- video principal del hero
+const IMAGE_SRC = "/hero.jpg"       // <- foto de respaldo si no hay video
 
 export function HeroSection() {
-  // Estado para almacenar los banners
-  const [banners, setBanners] = useState<ReturnType<typeof obtenerBannersPorUbicacion>>([]);
-  // Estado para detectar si estamos en un dispositivo móvil
-  const [isMobile, setIsMobile] = useState(false);
-  // Estado para rastrear si el componente está montado en el cliente
-  const [isMounted, setIsMounted] = useState(false);
-  // Estado para controlar qué banner se muestra actualmente
-  const [currentIndex, setCurrentIndex] = useState(0);
-  // Estado para controlar si las imágenes están cargadas
-  const [imagesLoaded, setImagesLoaded] = useState<Record<string, boolean>>({});
+  const [videoError, setVideoError] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
 
-  // Marcar el componente como montado en el cliente
-  useEffect(() => {
-    setIsMounted(true);
-    
-    // Obtener banners de la ubicación
-    const heroBanners = obtenerBannersPorUbicacion();
-    setBanners(heroBanners);
-    
-    // Inicializar el estado de carga de imágenes
-    const initialLoadState: Record<string, boolean> = {};
-    heroBanners.forEach(banner => {
-      initialLoadState[banner.id] = false;
-    });
-    setImagesLoaded(initialLoadState);
-    
-    // Detectar si estamos en móvil
-    const checkIfMobile = () => {
-      setIsMobile(window.innerWidth < 768); // Considerar móvil en menos de 768px
-    };
-    
-    // Verificar inicialmente
-    checkIfMobile();
-    
-    // Agregar listener para cambios de tamaño
-    window.addEventListener('resize', checkIfMobile);
-    
-    // Limpiar listener al desmontar
-    return () => window.removeEventListener('resize', checkIfMobile);
-  }, []);
+  useEffect(() => { setIsMounted(true) }, [])
 
-  // Función para actualizar el estado cuando una imagen termina de cargar
-  const handleImageLoad = useCallback((bannerId: string) => {
-    setImagesLoaded(prev => ({
-      ...prev,
-      [bannerId]: true
-    }));
-  }, []);
+  const hasVideo = VIDEO_SRC && !videoError
+  const hasImage = IMAGE_SRC && !hasVideo
 
-  // Efecto para cambiar automáticamente los banners cada 5 segundos
-  useEffect(() => {
-    if (!isMounted || banners.length <= 1) return; // No hay necesidad de rotar si hay uno o ningún banner
-    
-    const interval = setInterval(() => {
-      setCurrentIndex(prevIndex => (prevIndex + 1) % banners.length);
-    }, 5000);
-    
-    return () => clearInterval(interval);
-  }, [banners.length, isMounted]);
-
-  // Si no estamos montados, renderizamos una versión estática para SSR
-  if (!isMounted) {
-    return (
-      <div className="w-full relative h-[500px] overflow-hidden bg-muted/20 animate-pulse">
-        {/* Placeholder para SSR */}
-      </div>
-    );
-  }
-
-  // Si no hay banners configurados, no mostrar nada
-  if (banners.length === 0) {
-    return null;
-  }
-
-  // Renderización del banner - solo se ejecuta en cliente
-  const currentBanner = banners[currentIndex];
-  const imageUrl = isMobile ? currentBanner.mobileImageUrl : currentBanner.desktopImageUrl;
-
-  // Para múltiples banners, implementar carrusel
   return (
-    <div className="w-full relative h-[500px] overflow-hidden">
-      {/* Renderizar el banner actual */}
-      <Link 
-        href={currentBanner.linkUrl}
-        className="absolute inset-0 z-10"
-      >
-        {currentBanner.title && (
-          <div className="absolute z-20 top-1/2 left-12 transform -translate-y-1/2 max-w-lg">
-            <h2 className="text-4xl font-bold text-black drop-shadow-lg mb-4">{currentBanner.title}</h2>
-          </div>
-        )}
-        
+    <section className="relative w-full overflow-hidden" style={{ height: 'calc(100vh - 71px)', minHeight: '560px', maxHeight: '900px' }}>
+
+      {/* ─── VIDEO (prioridad máxima) ─── */}
+      {hasVideo && (
+        <video
+          className="absolute inset-0 w-full h-full object-cover"
+          autoPlay
+          muted
+          loop
+          playsInline
+          onError={() => setVideoError(true)}
+        >
+          <source src={VIDEO_SRC} type="video/mp4" />
+        </video>
+      )}
+
+      {/* ─── FOTO de fondo ─── */}
+      {hasImage && (
         <Image
-          src={imageUrl}
-          alt={currentBanner.title || "Banner promocional"}
+          src={IMAGE_SRC}
+          alt="Hero background"
           fill
-          className="object-cover"
-          priority={true}
+          className="object-cover object-center"
+          priority
           sizes="100vw"
-          onLoad={() => handleImageLoad(currentBanner.id)}
         />
-      </Link>
-      
-      {/* Indicadores de posición - solo si hay más de un banner */}
-      {banners.length > 1 && (
-        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2 z-20">
-          {banners.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => setCurrentIndex(index)}
-              className={`w-3 h-3 rounded-full transition-colors ${
-                index === currentIndex ? 'bg-white' : 'bg-white/50'
-              }`}
-              aria-label={`Ver banner ${index + 1}`}
-            />
-          ))}
+      )}
+
+      {/* ─── PLACEHOLDER cuando no hay video ni foto ─── */}
+      {!hasVideo && !hasImage && (
+        <div className="absolute inset-0 gradient-navy">
+          {/* Dot texture */}
+          <div
+            className="absolute inset-0 opacity-[0.035]"
+            style={{
+              backgroundImage: 'radial-gradient(circle, white 1.5px, transparent 1.5px)',
+              backgroundSize: '32px 32px',
+            }}
+          />
+          {/* Diagonal gold accent */}
+          <div
+            className="absolute right-0 top-0 bottom-0 w-[55%] hidden lg:block"
+            style={{
+              background: 'linear-gradient(108deg, transparent 15%, rgba(180,130,40,0.07) 100%)',
+              borderLeft: '1px solid rgba(180,130,40,0.18)',
+              clipPath: 'polygon(5% 0, 100% 0, 100% 100%, 0% 100%)',
+            }}
+          />
         </div>
       )}
-      
-      {/* Controles de navegación - solo mostrar si hay más de un banner */}
-      {banners.length > 1 && (
-        <>
-          <button 
-            onClick={() => setCurrentIndex((currentIndex - 1 + banners.length) % banners.length)}
-            className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/20 hover:bg-black/40 text-white rounded-full p-2 z-20"
-            aria-label="Banner anterior"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
-          </button>
-          <button 
-            onClick={() => setCurrentIndex((currentIndex + 1) % banners.length)}
-            className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/20 hover:bg-black/40 text-white rounded-full p-2 z-20"
-            aria-label="Banner siguiente"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 18l6-6-6-6" />
-            </svg>
-          </button>
-        </>
-      )}
-    </div>
-  );
-}
 
+      {/* ─── OVERLAY (siempre encima del video o fondo) ─── */}
+      <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/35 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+
+      {/* ─── CONTENIDO ─── */}
+      <div className="relative z-10 h-full flex flex-col justify-center">
+        <div className="container mx-auto px-4">
+          <div className="max-w-xl">
+            <span className="section-label mb-5 block animate-fade-up">
+              Merchandising corporativo
+            </span>
+            <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.05] tracking-tight mb-6 animate-fade-up-delay-1">
+              Tu marca,<br />en cada<br />
+              <span className="text-gold">detalle.</span>
+            </h1>
+            <p className="text-white/65 text-lg leading-relaxed mb-8 font-body font-light max-w-md animate-fade-up-delay-2">
+              Más de 1.000 productos personalizados para eventos, regalos corporativos y campañas de branding.
+            </p>
+            <div className="flex flex-wrap gap-3 animate-fade-up-delay-3">
+              <Link
+                href="/products"
+                className="inline-flex items-center gap-2 bg-gold hover:bg-gold-light text-white font-semibold px-7 py-3.5 rounded-sm transition-colors text-sm font-body shadow-lg shadow-black/30 tracking-wide"
+              >
+                Ver catálogo
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                href="/products"
+                className="inline-flex items-center gap-2 border border-white/30 hover:border-white/60 text-white/80 hover:text-white font-medium px-7 py-3.5 rounded-sm transition-all text-sm font-body tracking-wide"
+              >
+                Conocer más
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── SCROLL INDICATOR ─── */}
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1 opacity-50">
+        <div className="w-px h-10 bg-white animate-pulse" />
+        <span className="text-white text-[10px] font-body tracking-[0.2em] uppercase">Scroll</span>
+      </div>
+    </section>
+  )
+}

@@ -262,32 +262,18 @@ export async function getProductById(id: string): Promise<GenericProduct> {
     }
     
     // Get product data from direct endpoint
-    const product = await response.json();
-    
-    // Check the structure of the response
-    console.log(`Product response structure:`, Object.keys(product));
-    
-    // The API might return the product directly or it might be nested
-    // Handle different possible response structures
-    if (product.id === id) {
-      // Product data is directly in the response
+    const envelope = await response.json();
+
+    // API returns { generic_product: { ... } }
+    const product = envelope?.generic_product ?? envelope;
+
+    if (product && (product.id === id || product.id === Number(id) || String(product.id) === String(id))) {
       return product;
-    } else if (product.generic_product && typeof product.generic_product === 'object') {
-      // If generic_product is a single object and not an array
-      if (!Array.isArray(product.generic_product)) {
-        return product.generic_product;
-      }
-      
-      // If it's an array, find the matching product
-      const foundProduct = product.generic_product.find((p: any) => p.id === id);
-      if (foundProduct) {
-        return foundProduct;
-      }
     }
-    
-    // If we couldn't find the product in the expected structure, throw an error
-    console.error(`Unexpected API response structure for product ${id}:`, product);
-    throw new Error(`Could not find product with ID ${id} in API response`);
+
+    // Fallback: search in list
+    console.warn(`Unexpected response structure for product ${id}, falling back to list`);
+    throw new Error(`Could not find product ${id} in API response`);
   } catch (error) {
     console.error(`Error fetching product with ID ${id}:`, error);
     throw error;

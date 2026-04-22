@@ -96,25 +96,30 @@ export const FEATURED_CATEGORIES = [
  * - Orden de aparición
  */
 export const FEATURED_PRODUCTS = [
-  { 
-    id: 5258, 
+  {
+    id: 5258,
     source: 'zecat',
-    order: 1 
+    order: 1
   },
-  { 
-    id: 3898, 
+  {
+    id: 3898,
     source: 'zecat',
-    order: 2 
+    order: 2
   },
-  { 
-    id: 5214, 
+  {
+    id: 5214,
     source: 'zecat',
-    order: 3 
+    order: 3
   },
-  { 
-    id: 3936, 
+  {
+    id: 18677,
+    source: 'cdo',
+    order: 4
+  },
+  {
+    id: 5137,
     source: 'zecat',
-    order: 4 
+    order: 5
   },
 ];
 

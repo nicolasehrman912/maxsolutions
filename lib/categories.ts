@@ -1,167 +1,228 @@
 import { MainCategory, SubCategory } from "@/MODIFICAR";
 
-// Define types for our category structure
 export interface CategoryData {
   id: string | number;
   name: string;
   count?: number;
   subcategories?: SubcategoryData[];
+  zecatIds?: (string | number)[];
+  cdoIds?: number[];
 }
 
 export interface SubcategoryData {
   id: string | number;
   name: string;
   count?: number;
+  source?: 'zecat' | 'cdo';
 }
 
-// Format the categories and subcategories as required
 export function formatCategories(): CategoryData[] {
-  // Define the categories structure according to the requirements
-  const categories: CategoryData[] = [
+  return [
     {
       id: "apparel",
       name: "Apparel",
+      zecatIds: ["127", "117", "128", "169", "99", "151"],
+      cdoIds: [], // CDO no tiene indumentaria
       subcategories: [
-        { id: "127", name: "Chombas", count: 127 },
-        { id: "117", name: "Remeras", count: 117 },
-        { id: "128", name: "Abrigos", count: 128 },
-        { id: "169", name: "Apparel sols", count: 169 },
-        { id: "99", name: "Indumentaria corporativa con logo", count: 99 },
-        { id: "151", name: "Sale apparel", count: 151 },
-        { id: "131", name: "Próximos ingresos", count: 131 },
-        { id: "221", name: "Bolsas, Bolsos, Maletines y Mochilas", count: 221 },
+        { id: "127", name: "Chombas" },
+        { id: "117", name: "Remeras" },
+        { id: "128", name: "Abrigos" },
+        { id: "169", name: "Apparel Sols" },
+        { id: "99",  name: "Indumentaria corporativa" },
+        { id: "151", name: "Sale apparel" },
       ],
     },
     {
       id: "writing",
       name: "Escritura",
+      zecatIds: ["101", "64", "40", "179"],
+      cdoIds: [101, 599, 600],
       subcategories: [
-        { id: "101", name: "Escritura", count: 101 },
-        { id: "64", name: "Bolígrafos corporativos con logo", count: 64 },
-        { id: "40", name: "Artículos de oficina corporativos con logo", count: 40 },
-        { id: "179", name: "Cuadernos", count: 179 },
+        { id: "101", name: "Escritura" },
+        { id: "64",  name: "Bolígrafos corporativos" },
+        { id: "40",  name: "Artículos de oficina" },
+        { id: "179", name: "Cuadernos" },
       ],
     },
     {
       id: "bolsos",
       name: "Bolsos y Mochilas",
+      zecatIds: ["98", "221"],
+      cdoIds: [221, 598],
       subcategories: [
-        { id: "98", name: "Bolsos y mochilas corporativos con logo", count: 98 },
+        { id: "98",  name: "Bolsos y mochilas corporativos" },
+        { id: "221", name: "Bolsas, Bolsos y Maletines" },
       ],
     },
     {
       id: "technology",
       name: "Tecnología",
+      zecatIds: ["62", "161"],
+      cdoIds: [161, 639],
       subcategories: [
-        { id: "62", name: "Regalos corporativos tecnológicos con logo", count: 62 },
-        { id: "161", name: "Tech", count: 161 },
+        { id: "62",  name: "Regalos tecnológicos" },
+        { id: "161", name: "Tech" },
       ],
     },
     {
       id: "drinkware",
       name: "Drinkware",
+      zecatIds: ["96", "156", "165"],
+      cdoIds: [749, 37277],
       subcategories: [
-        { id: "96", name: "Termos corporativos y drinkware con logo", count: 96 },
-        { id: "156", name: "Mates, termos y materas", count: 156 },
-        { id: "165", name: "Hydra go", count: 165 },
+        { id: "96",  name: "Termos y drinkware" },
+        { id: "156", name: "Mates, termos y materas" },
+        { id: "165", name: "Hydra Go" },
       ],
     },
     {
       id: "hogar-tiempo-libre",
       name: "Hogar y tiempo libre",
+      zecatIds: ["97", "149", "182", "129", "122"],
+      cdoIds: [11, 41, 8239],
       subcategories: [
-        { id: "97", name: "Artículos de bazar corporativos con logo", count: 97 },
-        { id: "149", name: "Logo 24 horas", count: 149 },
-        { id: "182", name: "Minería", count: 182 },
-        { id: "129", name: "Cocina", count: 129 },
-        { id: "122", name: "Coolers y luncheras", count: 122 },
+        { id: "97",  name: "Artículos de bazar" },
+        { id: "149", name: "Logo 24 horas" },
+        { id: "182", name: "Minería" },
+        { id: "129", name: "Cocina" },
+        { id: "122", name: "Coolers y luncheras" },
       ],
     },
     {
       id: "gorros",
       name: "Gorros",
+      zecatIds: ["48"],
+      cdoIds: [251],
       subcategories: [
-        { id: "48", name: "Gorras y gorros corporativos con logo", count: 48 },
+        { id: "48", name: "Gorras y gorros corporativos" },
       ],
     },
     {
       id: "paraguas",
       name: "Paraguas",
+      zecatIds: ["58"],
+      cdoIds: [281],
       subcategories: [
-        { id: "58", name: "Paraguas", count: 58 },
+        { id: "58", name: "Paraguas" },
       ],
     },
     {
       id: "llaveros",
       name: "Llaveros",
+      zecatIds: ["43"],
+      cdoIds: [511],
       subcategories: [
-        { id: "43", name: "Llaveros corporativos con logo", count: 43 },
+        { id: "43", name: "Llaveros corporativos" },
       ],
     },
     {
-      id: "154",
-      name: "Deporte",
-      count: 154,
+      id: "deportes",
+      name: "Deportes",
+      zecatIds: ["154"],
+      cdoIds: [],
+      subcategories: [
+        { id: "154", name: "Deporte" },
+      ],
     },
     {
-      id: "162",
+      id: "agro",
       name: "Agro",
-      count: 162,
-    },
-    {
-      id: "181",
-      name: "Día del Trabajador",
-      count: 181,
-    },
-    {
-      id: "125",
-      name: "Back to School",
-      count: 125,
+      zecatIds: ["162"],
+      cdoIds: [38172, 24780],
+      subcategories: [
+        { id: "162", name: "Agro" },
+      ],
     },
     {
       id: "packaging",
       name: "Packaging",
+      zecatIds: ["181", "144"],
+      cdoIds: [],
+      subcategories: [
+        { id: "181", name: "Packaging" },
+        { id: "144", name: "Packaging premium" },
+      ],
+    },
+    {
+      id: "kits-y-sets",
+      name: "Kits y Sets",
+      zecatIds: [],
+      cdoIds: [],
+      subcategories: [],
     },
   ];
-
-  return categories;
 }
 
-// Get all subcategory IDs for a main category
+/**
+ * Dado un array de categoryIds, devuelve los IDs correctos para cada proveedor.
+ * hasCDOMapping = true significa que la categoría tiene IDs de CDO asignados
+ * hasCDOMapping = false significa que CDO no tiene esa categoría → no mostrar nada de CDO
+ */
+export function getUnifiedIdsForCategories(
+  categoryIds: (string | number)[],
+  categories: CategoryData[]
+): { zecatIds: string[], cdoIds: number[], hasCDOMapping: boolean } {
+  const zecatIds = new Set<string>();
+  const cdoIds = new Set<number>();
+  let foundAnyCategory = false;
+  let hasCDOMapping = false;
+
+  for (const catId of categoryIds) {
+    const catStr = catId.toString();
+
+    // Buscar como categoría principal (slug como "drinkware", "bolsos", etc.)
+    const mainCat = categories.find(c => c.id.toString() === catStr);
+    if (mainCat) {
+      foundAnyCategory = true;
+      (mainCat.zecatIds || []).forEach(id => zecatIds.add(id.toString()));
+      
+      // Si cdoIds está definido (aunque sea vacío), es un mapeo explícito
+      if (mainCat.cdoIds !== undefined) {
+        if (mainCat.cdoIds.length > 0) {
+          hasCDOMapping = true;
+          mainCat.cdoIds.forEach(id => cdoIds.add(id));
+        }
+        // Si cdoIds es [] vacío, hasCDOMapping permanece false → no mostrar CDO
+      }
+      continue;
+    }
+
+    // Si no es un slug, es un ID numérico de subcategoría Zecat → usarlo directo
+    // En este caso no tenemos info de CDO
+    zecatIds.add(catStr);
+  }
+
+  return {
+    zecatIds: Array.from(zecatIds),
+    cdoIds: Array.from(cdoIds),
+    hasCDOMapping
+  };
+}
+
+// Legacy helpers
 export function getAllSubcategoryIds(categoryId: string | number, categories: CategoryData[]): (string | number)[] {
   const category = categories.find(cat => cat.id.toString() === categoryId.toString());
-  
-  if (!category || !category.subcategories) {
-    return [categoryId];
-  }
-  
-  return category.subcategories.map(sub => sub.id);
+  if (!category) return [categoryId];
+  if (category.zecatIds?.length) return category.zecatIds;
+  if (category.subcategories?.length) return category.subcategories.map(s => s.id);
+  return [categoryId];
 }
 
-// Find main category by subcategory ID
 export function findMainCategoryBySubcategoryId(subcategoryId: string | number, categories: CategoryData[]): CategoryData | undefined {
-  return categories.find(category => 
-    category.subcategories?.some(subcategory => 
-      subcategory.id.toString() === subcategoryId.toString()
-    )
+  return categories.find(category =>
+    category.subcategories?.some(sub => sub.id.toString() === subcategoryId.toString()) ||
+    category.zecatIds?.some(id => id.toString() === subcategoryId.toString())
   );
 }
 
-// Get category by ID (can be main category or subcategory)
 export function getCategoryById(categoryId: string | number, categories: CategoryData[]): CategoryData | SubcategoryData | undefined {
-  // First, check if it's a main category
   const mainCategory = categories.find(cat => cat.id.toString() === categoryId.toString());
   if (mainCategory) return mainCategory;
-  
-  // If not, look for a subcategory
   for (const category of categories) {
     if (category.subcategories) {
-      const subcategory = category.subcategories.find(
-        sub => sub.id.toString() === categoryId.toString()
-      );
-      if (subcategory) return subcategory;
+      const sub = category.subcategories.find(s => s.id.toString() === categoryId.toString());
+      if (sub) return sub;
     }
   }
-  
   return undefined;
-} 
+}

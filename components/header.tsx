@@ -7,10 +7,9 @@ import { Phone, Search, Menu, X, ChevronDown } from "lucide-react"
 import { useState, Suspense, useEffect } from "react"
 import Image from "next/image"
 import dynamic from 'next/dynamic'
-import { Input } from "@/components/ui/input"
 import { generarUrlWhatsApp } from "@/MODIFICAR"
 import { useRouter } from "next/navigation"
-import { formatCategories, CategoryData, SubcategoryData } from "@/lib/categories"
+import { formatCategories, CategoryData } from "@/lib/categories"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,27 +18,24 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-// Create a client-only mobile menu component
 const MobileMenu = dynamic(
   () => import('@/components/mobile-menu').then(mod => mod.MobileMenu),
-  { ssr: false } // Never render on server
+  { ssr: false }
 )
 
-// Client component for the search form
 function SearchForm() {
   const searchParams = useSearchParams()
-  
   return (
-    <form action="/products" method="get" className="flex-1">
+    <form action="/products" method="get">
       <div className="relative">
-        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
+        <input
           type="search"
           name="search"
           placeholder="Buscar productos..."
           defaultValue={searchParams?.get('search') || ''}
-          className="w-full pl-9 pr-4"
           autoComplete="off"
+          className="w-full pl-9 pr-4 py-2 rounded-md text-sm bg-white/10 border border-white/15 text-white placeholder:text-white/40 focus:outline-none focus:border-white/40 focus:bg-white/15 transition-all font-body"
         />
         <input type="hidden" name="page" value="1" />
       </div>
@@ -47,120 +43,61 @@ function SearchForm() {
   )
 }
 
-// Desktop category dropdown menu
 function CategoryDropdown({ category }: { category: CategoryData }) {
-  const router = useRouter();
-  
-  const handleCategoryClick = (categoryId: string | number) => {
-    router.push(`/products?category=${categoryId}`);
-  };
-  
+  const router = useRouter()
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="flex items-center gap-1 text-sm whitespace-nowrap">
+        <button className="flex items-center gap-1 text-sm text-white/75 hover:text-white transition-colors whitespace-nowrap font-body font-medium">
           {category.name}
-          <ChevronDown className="h-4 w-4" />
+          <ChevronDown className="h-3.5 w-3.5 opacity-60" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-56">
-        <DropdownMenuItem 
-          className="font-medium"
-          onClick={() => handleCategoryClick(category.id)}
-        >
-          Ver todos los productos
+      <DropdownMenuContent align="start" className="w-56 shadow-xl border-border">
+        <DropdownMenuItem className="font-semibold text-navy text-sm" onClick={() => router.push(`/products?category=${category.id}`)}>
+          Ver todos
         </DropdownMenuItem>
-        
         <DropdownMenuSeparator />
-        
-        {category.subcategories?.map((subcategory) => (
-          <DropdownMenuItem 
-            key={subcategory.id}
-            onClick={() => handleCategoryClick(subcategory.id)}
-          >
-            {subcategory.name}
-            {subcategory.count && (
-              <span className="ml-auto text-xs text-muted-foreground">
-                ({subcategory.count})
-              </span>
-            )}
+        {category.subcategories?.map(sub => (
+          <DropdownMenuItem key={sub.id} className="text-sm" onClick={() => router.push(`/products?category=${sub.id}`)}>
+            {sub.name}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
-  );
+  )
 }
 
-// Desktop navigation menu
 function DesktopNavigation() {
-  const [categories, setCategories] = useState<CategoryData[]>([]);
-  const pathname = usePathname();
-  const router = useRouter();
-  
-  useEffect(() => {
-    // Load categories
-    const loadedCategories = formatCategories();
-    setCategories(loadedCategories);
-  }, []);
-  
-  // Handle category click (for categories without subcategories)
-  const handleCategoryClick = (e: React.MouseEvent, categoryId: string | number) => {
-    e.preventDefault();
-    router.push(`/products?category=${categoryId}`);
-  };
-  
+  const [categories, setCategories] = useState<CategoryData[]>([])
+  const router = useRouter()
+  useEffect(() => { setCategories(formatCategories()) }, [])
   return (
-    <nav className="hidden md:flex items-center gap-6 text-sm">
-      <Link 
-        href="/products" 
-        className={pathname.startsWith("/products") && !pathname.includes("?") ? "font-medium" : ""}
-      >
-        Todos los Productos
+    <nav className="hidden md:flex items-center gap-6">
+      <Link href="/products" className="text-sm text-white/75 hover:text-white transition-colors font-body font-medium whitespace-nowrap">
+        Todos los productos
       </Link>
-      
-      {/* Only show first 4 categories with subcategories in the main nav to avoid overflow */}
-      {categories
-        .filter(cat => cat.subcategories && cat.subcategories.length > 0)
-        .slice(0, 4)
-        .map(category => (
-          <CategoryDropdown key={category.id} category={category} />
-        ))}
-      
-      {/* More dropdown for other categories */}
+      {categories.filter(c => c.subcategories?.length).slice(0, 4).map(cat => (
+        <CategoryDropdown key={cat.id} category={cat} />
+      ))}
       {categories.length > 4 && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-1 text-sm whitespace-nowrap">
-              Más categorías
-              <ChevronDown className="h-4 w-4" />
+            <button className="flex items-center gap-1 text-sm text-white/75 hover:text-white transition-colors whitespace-nowrap font-body font-medium">
+              Más <ChevronDown className="h-3.5 w-3.5 opacity-60" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            {categories
-              .filter((_, index) => index >= 4)
-              .map(category => (
-                <DropdownMenuItem 
-                  key={category.id}
-                  onClick={(e) => {
-                    if (category.subcategories && category.subcategories.length > 0) {
-                      e.preventDefault();
-                      router.push(`/products?category=${category.id}`);
-                    }
-                  }}
-                >
-                  {category.name}
-                  {category.count && (
-                    <span className="ml-auto text-xs text-muted-foreground">
-                      ({category.count})
-                    </span>
-                  )}
-                </DropdownMenuItem>
-              ))}
+          <DropdownMenuContent align="end" className="w-56 shadow-xl">
+            {categories.slice(4).map(cat => (
+              <DropdownMenuItem key={cat.id} className="text-sm" onClick={() => router.push(`/products?category=${cat.id}`)}>
+                {cat.name}
+              </DropdownMenuItem>
+            ))}
           </DropdownMenuContent>
         </DropdownMenu>
       )}
     </nav>
-  );
+  )
 }
 
 export function Header() {
@@ -168,80 +105,52 @@ export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [whatsappUrl, setWhatsappUrl] = useState("#")
   const [isMounted, setIsMounted] = useState(false)
-  
-  // Update WhatsApp URL after hydration
+
   useEffect(() => {
     setIsMounted(true)
     setWhatsappUrl(generarUrlWhatsApp('general'))
   }, [])
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full gradient-navy">
+      {/* Gold top line */}
+      <div className="h-[3px] bg-gold w-full" />
+
       <div className="container mx-auto px-4">
-        <div className="flex h-16 items-center justify-between">
-          {/* Left section with logo and navigation */}
-          <div className="flex items-center gap-6">
-            <a href="/" className="font-bold text-xl shrink-0">
-              <Image src="/logo.png" alt="ZECAT Promocionales" width={100} height={100} />
-            </a>
-            
-            {/* Desktop Navigation */}
-            <DesktopNavigation />
-          </div>
-          
-          {/* Right section with search and contact */}
-          <div className="flex items-center gap-4">
-            {/* Search (only on desktop) */}
-            <div className="hidden md:block w-[300px]">
-              <Suspense fallback={
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    disabled
-                    placeholder="Cargando..."
-                    className="w-full pl-9 pr-4"
-                  />
-                </div>
-              }>
+        <div className="flex h-[68px] items-center gap-6">
+          {/* Logo */}
+          <a href="/" className="shrink-0">
+            <Image src="/logo.png" alt="Max Solutions" width={115} height={46} className="brightness-0 invert" />
+          </a>
+
+          {/* Nav */}
+          <DesktopNavigation />
+
+          {/* Right side */}
+          <div className="flex items-center gap-3 ml-auto">
+            <div className="hidden md:block w-[260px]">
+              <Suspense fallback={<div className="h-9 rounded-md bg-white/10 animate-pulse w-full" />}>
                 <SearchForm />
               </Suspense>
             </div>
-          
-            {/* Contact button */}
-            <div className="hidden md:block">
-              {isMounted ? (
-                <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
-                  <Button size="sm">
-                    <Phone className="h-4 w-4 mr-2" />
-                    Contactar
-                  </Button>
-                </a>
-              ) : (
-                <Button size="sm" disabled>
-                  <Phone className="h-4 w-4 mr-2" />
-                  Contactar
-                </Button>
-              )}
-            </div>
-            
-            {/* Mobile menu button */}
-            <button 
-              className="md:hidden" 
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label="Toggle menu"
-            >
+
+            {isMounted ? (
+              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="hidden md:flex items-center gap-2 bg-gold hover:bg-gold-light text-white font-semibold text-sm px-5 py-2 rounded-md transition-colors whitespace-nowrap font-body shadow-lg shadow-black/20">
+                <Phone className="h-4 w-4" />
+                Contactar
+              </a>
+            ) : (
+              <div className="hidden md:block w-28 h-9 rounded-md bg-white/10 animate-pulse" />
+            )}
+
+            <button className="md:hidden text-white p-1" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
               {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
           </div>
         </div>
       </div>
-      
-      {/* Client-only mobile menu */}
-      <MobileMenu
-        isOpen={mobileMenuOpen}
-        onClose={() => setMobileMenuOpen(false)}
-        pathname={pathname}
-      />
+
+      <MobileMenu isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} pathname={pathname} />
     </header>
   )
 }
