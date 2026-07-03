@@ -14,7 +14,7 @@ interface Product {
   totalStock: number;
   source: string;
   price?: number;
-  cdoListPrice?: string; // ✅ precio CDO en USD
+  cdoListPrice?: string; // precio CDO en USD
 }
 
 interface ProductListingClientProps {
@@ -35,11 +35,11 @@ export default function ProductListingClient({
   search
 }: ProductListingClientProps) {
   const [isMounted, setIsMounted] = useState(false);
-  
+
   useEffect(() => {
     setIsMounted(true);
   }, []);
-  
+
   const buildPaginationUrl = (pageNum: number) => {
     const params = new URLSearchParams();
     params.set('page', pageNum.toString());
@@ -85,8 +85,6 @@ export default function ProductListingClient({
     );
   };
 
-  if (typeof window === 'undefined') return null;
-
   useEffect(() => {
     if (isMounted && totalPages > 0 && currentPage > totalPages) {
       window.location.href = buildPaginationUrl(totalPages);
@@ -98,7 +96,7 @@ export default function ProductListingClient({
       <div className="flex items-center justify-between mb-6">
         <p className="text-sm text-muted-foreground">{totalProducts} productos encontrados</p>
       </div>
-      
+
       {products.length === 0 ? (
         <div className="text-center py-12 bg-muted rounded-lg">
           <div className="max-w-sm mx-auto">

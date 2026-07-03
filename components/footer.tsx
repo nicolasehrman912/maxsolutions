@@ -17,7 +17,7 @@ export function Footer() {
       <div className="container mx-auto px-4 py-14">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-16">
 
-          {/* Col 1 — Brand */}
+          {/* Col 1 - Brand */}
           <div>
             <Image src="/logo.png" alt="Max Solutions" width={120} height={48} className="brightness-0 invert mb-5" />
             <p className="text-white/50 text-sm font-body leading-relaxed max-w-xs">
@@ -39,17 +39,17 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Col 2 — Links */}
+          {/* Col 2 - Links */}
           <div>
             <h4 className="text-white font-display font-semibold text-xs uppercase tracking-widest mb-5">Catálogo</h4>
             <ul className="space-y-3">
               {[
                 ['Todos los productos', '/products'],
-                ['Apparel', '/products?category=apparel'],
-                ['Escritura', '/products?category=writing'],
-                ['Tecnología', '/products?category=technology'],
-                ['Drinkware', '/products?category=drinkware'],
-                ['Bolsos y Mochilas', '/products?category=bags'],
+                ['Apparel', '/products/categoria/apparel'],
+                ['Escritura', '/products/categoria/writing'],
+                ['Tecnología', '/products/categoria/technology'],
+                ['Drinkware', '/products/categoria/drinkware'],
+                ['Bolsos y Mochilas', '/products/categoria/bolsos'],
               ].map(([label, href]) => (
                 <li key={href}>
                   <Link href={href} className="text-white/50 hover:text-gold text-sm font-body transition-colors">
@@ -60,7 +60,7 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Col 3 — Contact */}
+          {/* Col 3 - Contact */}
           <div>
             <h4 className="text-white font-display font-semibold text-xs uppercase tracking-widest mb-5">Contacto</h4>
             <ul className="space-y-4">
@@ -102,4 +102,3 @@ export function Footer() {
     </footer>
   )
 }
-

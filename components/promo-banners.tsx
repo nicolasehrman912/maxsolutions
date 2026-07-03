@@ -4,21 +4,13 @@ import Link from "next/link"
 import Image from "next/image"
 import { ArrowRight } from "lucide-react"
 
-/**
- * BANNERS SECTION — 3 banners horizontales estilo SimpleStore
- *
- * Cuando tengas las imágenes de los banners:
- * 1. Colocá los archivos en /public/banners/
- * 2. Actualizá los campos `image` de cada banner abajo
- * 3. También podés editar título, subtítulo, color y link
- */
 const PROMO_BANNERS = [
   {
     id: "banner-1",
     title: "Sector Agro",
     subtitle: "Productos promocionales para el campo",
     cta: "Ver productos",
-    href: "/products?category=agro",
+    href: "/products/categoria/agro",
     image: "/banner-agro.webp",
     bgColor: "from-[#1a2f4a] to-[#0d1f33]",
     accent: "hsl(38 72% 47%)",
@@ -28,7 +20,7 @@ const PROMO_BANNERS = [
     title: "Merch mundialista",
     subtitle: "Merchandising para grandes eventos",
     cta: "Ver productos",
-    href: "/products?category=deportes",
+    href: "/products/categoria/deportes",
     image: "/banner-mundial.webp",
     bgColor: "from-[#2a1a0a] to-[#1a0f05]",
     accent: "hsl(38 72% 55%)",
@@ -38,7 +30,7 @@ const PROMO_BANNERS = [
     title: "Kits & Sets",
     subtitle: "Conjuntos armados y listos para regalar",
     cta: "Explorar",
-    href: "/products?category=kits-y-sets",
+    href: "/products/categoria/kits-y-sets",
     image: "/banner-kits.webp",
     bgColor: "from-[#0f2a1a] to-[#071a10]",
     accent: "hsl(38 72% 47%)",
@@ -56,7 +48,6 @@ export function PromoBanners() {
             className="group relative overflow-hidden rounded-lg card-lift"
             style={{ aspectRatio: '4/3' }}
           >
-            {/* Background image or gradient */}
             {banner.image ? (
               <Image
                 src={banner.image}
@@ -66,7 +57,6 @@ export function PromoBanners() {
               />
             ) : (
               <div className={`absolute inset-0 bg-gradient-to-br ${banner.bgColor}`}>
-                {/* Placeholder pattern */}
                 <div
                   className="absolute inset-0 opacity-[0.04]"
                   style={{
@@ -77,13 +67,9 @@ export function PromoBanners() {
               </div>
             )}
 
-            {/* Overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-
-            {/* Gold accent line */}
             <div className="absolute top-0 left-0 right-0 h-[3px]" style={{ backgroundColor: banner.accent }} />
 
-            {/* Content */}
             <div className="absolute inset-0 flex flex-col justify-end p-6">
               <h3 className="font-display font-bold text-white text-xl leading-tight mb-1">
                 {banner.title}

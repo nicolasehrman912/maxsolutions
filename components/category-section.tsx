@@ -8,8 +8,6 @@ import { useEffect, useState } from "react"
 
 /**
  * Mapeo de ID de categoría featured → slug de URL
- * Esto asegura que las cards del home generen URLs como /products?category=drinkware
- * en vez de /products?category=96&category=156 (que no mapea CDO correctamente)
  */
 const CATEGORY_ID_TO_SLUG: Record<string, string> = {
   "apparel":    "apparel",
@@ -32,9 +30,9 @@ export function CategorySection() {
 
   const buildCategoryUrl = (category: typeof FEATURED_CATEGORIES[0]) => {
     const id = category.id.toString()
-    // Usar slug si existe, sino usar el ID directo
-    const slug = CATEGORY_ID_TO_SLUG[id] || id
-    return `/products?category=${slug}`
+    // Usar slug si existe (ruta indexable), sino usar el ID directo como query
+    const slug = CATEGORY_ID_TO_SLUG[id]
+    return slug ? `/products/categoria/${slug}` : `/products?category=${id}`
   }
 
   return (
@@ -47,7 +45,6 @@ export function CategorySection() {
           </h2>
         </div>
 
-        {/* 4 cards IGUALES en fila — estilo Louis Vuitton */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
           {FEATURED_CATEGORIES.map((category) => (
             <Link
@@ -90,5 +87,3 @@ export function CategorySection() {
     </section>
   )
 }
-
-

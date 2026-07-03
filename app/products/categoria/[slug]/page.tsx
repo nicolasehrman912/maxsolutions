@@ -3,11 +3,13 @@ import { getUnifiedProducts } from "@/lib/api/unified"
 import { Suspense } from "react"
 import { CategoriesSidebar } from "@/components/categories/categories-sidebar"
 import ProductListingClient from "@/components/product-listing-client"
-import { ClientOnly } from "@/components/client-only"
 import { ProductsPageSkeleton } from "@/components/skeletons/products-page-skeleton"
 import type { Metadata } from "next"
 
 const BASE = "https://www.maxsolutionsmerchandising.com"
+
+// ISR: regenerar cada hora para mantener stock y precios frescos
+export const revalidate = 3600
 
 const CATEGORIES: Record<string, {
   name: string
@@ -199,15 +201,13 @@ export default async function CategoryPage({ params }: { params: { slug: string 
           </div>
 
           <Suspense fallback={<ProductsPageSkeleton />}>
-            <ClientOnly>
-              <ProductListingClient
-                products={products}
-                totalPages={productsResponse.total_pages}
-                totalProducts={productsResponse.count}
-                currentPage={1}
-                categoryParam={params.slug}
-              />
-            </ClientOnly>
+            <ProductListingClient
+              products={products}
+              totalPages={productsResponse.total_pages}
+              totalProducts={productsResponse.count}
+              currentPage={1}
+              categoryParam={params.slug}
+            />
           </Suspense>
         </div>
       </div>

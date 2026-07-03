@@ -6,7 +6,6 @@ import { ProductsPageSkeleton } from "@/components/skeletons/products-page-skele
 import { CategoriesSidebar } from "@/components/categories/categories-sidebar"
 import ProductListingClient from "@/components/product-listing-client"
 import { MobileFilterButton } from "@/components/mobile-filter-button"
-import { ClientOnly } from "@/components/client-only"
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -133,16 +132,14 @@ export default async function ProductsPage({
             </div>
 
             <Suspense fallback={<ProductsPageSkeleton />}>
-              <ClientOnly>
-                <ProductListingClient
-                  products={products}
-                  totalPages={productsResponse.total_pages}
-                  totalProducts={productsResponse.count}
-                  currentPage={page}
-                  categoryParam={categoryParam}
-                  search={search}
-                />
-              </ClientOnly>
+              <ProductListingClient
+                products={products}
+                totalPages={productsResponse.total_pages}
+                totalProducts={productsResponse.count}
+                currentPage={page}
+                categoryParam={categoryParam}
+                search={search}
+              />
             </Suspense>
           </div>
         </div>
@@ -171,4 +168,3 @@ export default async function ProductsPage({
     );
   }
 }
-

@@ -5,20 +5,8 @@ import Image from "next/image"
 import { ArrowRight } from "lucide-react"
 import { useState, useEffect } from "react"
 
-/**
- * HERO SECTION — Estilo Louis Vuitton
- *
- * Para agregar tu VIDEO cuando lo tengas:
- * 1. Colocá el archivo en /public/video/hero.mp4
- * 2. Cambiá VIDEO_SRC por "/video/hero.mp4"
- *
- * Para usar una FOTO de fondo:
- * 1. Colocá el archivo en /public/ (ej: hero.jpg)
- * 2. Cambiá IMAGE_SRC por "/hero.jpg"
- * 3. Si hay video, el video tiene prioridad sobre la foto.
- */
-const VIDEO_SRC = "/video/hero.mp4" // <- video principal del hero
-const IMAGE_SRC = "/hero.jpg"       // <- foto de respaldo si no hay video
+const VIDEO_SRC = "/video/hero.mp4" // video principal del hero
+const IMAGE_SRC = "/hero.jpg"       // foto de respaldo si no hay video
 
 export function HeroSection() {
   const [videoError, setVideoError] = useState(false)
@@ -32,7 +20,6 @@ export function HeroSection() {
   return (
     <section className="relative w-full overflow-hidden" style={{ height: 'calc(100vh - 71px)', minHeight: '560px', maxHeight: '900px' }}>
 
-      {/* ─── VIDEO (prioridad máxima) ─── */}
       {hasVideo && (
         <video
           className="absolute inset-0 w-full h-full object-cover"
@@ -46,7 +33,6 @@ export function HeroSection() {
         </video>
       )}
 
-      {/* ─── FOTO de fondo ─── */}
       {hasImage && (
         <Image
           src={IMAGE_SRC}
@@ -58,10 +44,8 @@ export function HeroSection() {
         />
       )}
 
-      {/* ─── PLACEHOLDER cuando no hay video ni foto ─── */}
       {!hasVideo && !hasImage && (
         <div className="absolute inset-0 gradient-navy">
-          {/* Dot texture */}
           <div
             className="absolute inset-0 opacity-[0.035]"
             style={{
@@ -69,7 +53,6 @@ export function HeroSection() {
               backgroundSize: '32px 32px',
             }}
           />
-          {/* Diagonal gold accent */}
           <div
             className="absolute right-0 top-0 bottom-0 w-[55%] hidden lg:block"
             style={{
@@ -81,11 +64,9 @@ export function HeroSection() {
         </div>
       )}
 
-      {/* ─── OVERLAY (siempre encima del video o fondo) ─── */}
       <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/35 to-transparent" />
       <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
 
-      {/* ─── CONTENIDO ─── */}
       <div className="relative z-10 h-full flex flex-col justify-center">
         <div className="container mx-auto px-4">
           <div className="max-w-xl">
@@ -93,6 +74,7 @@ export function HeroSection() {
               Merchandising corporativo
             </span>
             <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.05] tracking-tight mb-6 animate-fade-up-delay-1">
+              <span className="sr-only">Merchandising corporativo y regalos empresariales: </span>
               Tu marca,<br />en cada<br />
               <span className="text-gold">detalle.</span>
             </h1>
@@ -118,7 +100,6 @@ export function HeroSection() {
         </div>
       </div>
 
-      {/* ─── SCROLL INDICATOR ─── */}
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1 opacity-50">
         <div className="w-px h-10 bg-white animate-pulse" />
         <span className="text-white text-[10px] font-body tracking-[0.2em] uppercase">Scroll</span>
