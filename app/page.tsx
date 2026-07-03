@@ -5,6 +5,24 @@ import { BrandCarousel } from "@/components/brand-carousel"
 import { PurchaseStepsModal } from "@/components/purchase-steps-modal"
 import { ClientsSection } from "@/components/clients-section"
 import { PromoBanners } from "@/components/promo-banners"
+import type { Metadata } from "next"
+
+export const metadata: Metadata = {
+  title: "Merchandising Corporativo y Regalos Empresariales | Max Solutions",
+  description:
+    "Más de 1.000 productos promocionales personalizados con tu logo: botellas, mochilas, cuadernos y kits corporativos. Envíos a toda Argentina. Pedí tu cotización.",
+  openGraph: {
+    title: "Merchandising Corporativo y Regalos Empresariales | Max Solutions",
+    description:
+      "Más de 1.000 productos promocionales personalizados con tu logo. Envíos a toda Argentina.",
+    url: "https://www.maxsolutionsmerchandising.com",
+    siteName: "Max Solutions",
+    locale: "es_AR",
+    type: "website",
+    images: ["https://www.maxsolutionsmerchandising.com/logo.png"],
+  },
+  alternates: { canonical: "https://www.maxsolutionsmerchandising.com" },
+}
 
 export default function Home() {
   return (

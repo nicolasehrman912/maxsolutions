@@ -11,6 +11,13 @@ import { ClientOnly } from "@/components/client-only"
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+export const metadata = {
+  title: "Catálogo de Merchandising Personalizado | Max Solutions",
+  description:
+    "Explorá +1.000 artículos promocionales con logo: drinkware, apparel, tecnología, escritura y kits. Cotizá por WhatsApp con stock en tiempo real.",
+  alternates: { canonical: "https://www.maxsolutionsmerchandising.com/products" },
+}
+
 interface SearchParams {
   page?: string
   limit?: string

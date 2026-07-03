@@ -12,8 +12,23 @@ import Script from "next/script";
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Max Solutions",
-  description: "Max Solutions",
+  title: {
+    default: "Max Solutions | Merchandising Corporativo",
+    template: "%s | Max Solutions",
+  },
+  description:
+    "Más de 1.000 productos promocionales personalizados con tu logo. Envíos a toda Argentina.",
+  metadataBase: new URL("https://www.maxsolutionsmerchandising.com"),
+}
+
+const orgSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "Max Solutions",
+  url: "https://www.maxsolutionsmerchandising.com",
+  logo: "https://www.maxsolutionsmerchandising.com/logo.png",
+  email: "contacto.maxsolutions@gmail.com",
+  sameAs: ["https://instagram.com/maxsolutionsmerchandising"],
 }
 
 export default function RootLayout({
@@ -43,6 +58,10 @@ export default function RootLayout({
             style={{ display: 'none', visibility: 'hidden' }}
           ></iframe>
         </noscript>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }}
+        />
         <ClientProvider>
           <CartProvider>
             <div className="flex flex-col min-h-screen">
